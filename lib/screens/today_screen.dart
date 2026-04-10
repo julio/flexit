@@ -52,56 +52,25 @@ class _TodayScreenState extends State<TodayScreen> {
     await saveTodayCompletedExercises(updated);
     setState(() => _completedExercises = updated);
 
-    // Auto check-out when all exercises are done
-    if (!_done) {
-      final blocks = getTodayBlocks();
-      final allIds = blocks.expand((b) => b.exercises).map((e) => e.id).toSet();
-      if (allIds.difference(updated).isEmpty) {
-        await _doCheckOut();
-      }
+    // Auto-complete session when all exercises are done
+    final blocks = getTodayBlocks();
+    final allIds = blocks.expand((b) => b.exercises).map((e) => e.id).toSet();
+    final allDone = allIds.difference(updated).isEmpty;
+
+    if (allDone && !_done) {
+      final today = formatDate(DateTime.now());
+      await saveSession(Session(
+        date: today,
+        completedAt: DateTime.now().toIso8601String(),
+        type: isWeekendDay() ? 'weekend' : 'daily',
+      ));
+      HapticFeedback.heavyImpact();
+      await _loadState();
+    } else if (!allDone && _done) {
+      // Un-complete if user unchecks an exercise
+      await removeSession(formatDate(DateTime.now()));
+      await _loadState();
     }
-  }
-
-  Future<void> _doCheckOut() async {
-    final today = formatDate(DateTime.now());
-    await saveSession(Session(
-      date: today,
-      completedAt: DateTime.now().toIso8601String(),
-      type: isWeekendDay() ? 'weekend' : 'daily',
-    ));
-    HapticFeedback.heavyImpact();
-    await _loadState();
-  }
-
-  Future<void> _checkOut() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.card,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Check Out',
-            style:
-                TextStyle(color: AppColors.text, fontWeight: FontWeight.w700)),
-        content: const Text("Mark today's session as complete?",
-            style: TextStyle(color: AppColors.textSecondary)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel',
-                style: TextStyle(color: AppColors.textSecondary)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Done!',
-                style: TextStyle(
-                    color: AppColors.accent, fontWeight: FontWeight.w700)),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true) return;
-    await _doCheckOut();
   }
 
   @override
@@ -120,160 +89,127 @@ class _TodayScreenState extends State<TodayScreen> {
     }
 
     return Scaffold(
-      body: Stack(
-        children: [
-          CustomScrollView(
-            slivers: [
-              SliverAppBar(
-                pinned: true,
-                expandedHeight: _streak > 0 ? 140 : 120,
-                flexibleSpace: FlexibleSpaceBar(
-                  background: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 60, 20, 0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+      body: CustomScrollView(
+        slivers: [
+          SliverAppBar(
+            pinned: true,
+            expandedHeight: _streak > 0 ? 140 : 120,
+            flexibleSpace: FlexibleSpaceBar(
+              background: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 60, 20, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isWeekend ? 'Weekend Deep Session' : 'Daily 15',
+                      style: const TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.text,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
                       children: [
                         Text(
-                          isWeekend ? 'Weekend Deep Session' : 'Daily 15',
+                          '$completedCount/$totalExercises exercises',
                           style: const TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.text,
+                            fontSize: 15,
+                            color: AppColors.textSecondary,
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Text(
-                              '$completedCount/$totalExercises exercises',
-                              style: const TextStyle(
-                                fontSize: 15,
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                            Text(
-                              ' \u00b7 ${isWeekend ? "~25 min" : "~15 min"}',
-                              style: const TextStyle(
-                                fontSize: 15,
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                          ],
-                        ),
-                        if (_streak > 0) ...[
-                          const SizedBox(height: 10),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 5),
-                            decoration: BoxDecoration(
-                              color: AppColors.accentDim,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              '$_streak day streak',
-                              style: const TextStyle(
-                                color: AppColors.accent,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
+                        Text(
+                          ' \u00b7 ${isWeekend ? "~25 min" : "~15 min"}',
+                          style: const TextStyle(
+                            fontSize: 15,
+                            color: AppColors.textSecondary,
                           ),
-                        ],
+                        ),
                       ],
                     ),
+                    if (_streak > 0) ...[
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: AppColors.accentDim,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '$_streak day streak',
+                          style: const TextStyle(
+                            color: AppColors.accent,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+          // Progress bar
+          if (totalExercises > 0)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: completedCount / totalExercises,
+                    backgroundColor: AppColors.cardBorder,
+                    color: _done ? AppColors.success : AppColors.accent,
+                    minHeight: 4,
                   ),
                 ),
               ),
-              // Progress bar
-              if (!_done && totalExercises > 0)
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: LinearProgressIndicator(
-                        value: completedCount / totalExercises,
-                        backgroundColor: AppColors.cardBorder,
-                        color: completedCount == totalExercises
-                            ? AppColors.success
-                            : AppColors.accent,
-                        minHeight: 4,
-                      ),
-                    ),
+            ),
+          if (_done)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppColors.successDim,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                        color: AppColors.success.withValues(alpha: 0.25)),
                   ),
-                ),
-              if (_done)
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-                    child: Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: AppColors.successDim,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                            color:
-                                AppColors.success.withValues(alpha: 0.25)),
-                      ),
-                      child: const Text(
-                        "Today's session complete",
-                        textAlign: TextAlign.center,
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.check_circle, color: AppColors.success, size: 18),
+                      SizedBox(width: 8),
+                      Text(
+                        "All done for today",
                         style: TextStyle(
                           color: AppColors.success,
                           fontWeight: FontWeight.w700,
                           fontSize: 15,
                         ),
                       ),
-                    ),
-                  ),
-                ),
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 120),
-                sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) => _BlockCard(
-                      block: blocks[index],
-                      completedExercises: _completedExercises,
-                      onToggle: _toggleExercise,
-                    ),
-                    childCount: blocks.length,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          if (!_done)
-            Positioned(
-              left: 20,
-              right: 20,
-              bottom: MediaQuery.of(context).padding.bottom + 16,
-              child: GestureDetector(
-                onTap: _checkOut,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 18),
-                  decoration: BoxDecoration(
-                    color: AppColors.accent,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.accent.withValues(alpha: 0.3),
-                        blurRadius: 20,
-                        offset: const Offset(0, 8),
-                      ),
                     ],
-                  ),
-                  child: const Text(
-                    'Check Out',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                    ),
                   ),
                 ),
               ),
             ),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) => _BlockCard(
+                  block: blocks[index],
+                  completedExercises: _completedExercises,
+                  onToggle: _toggleExercise,
+                ),
+                childCount: blocks.length,
+              ),
+            ),
+          ),
         ],
       ),
     );

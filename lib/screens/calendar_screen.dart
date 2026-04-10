@@ -128,7 +128,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                // Calendar grid
                 _buildCalendarGrid(sessionDates, today),
                 const SizedBox(height: 12),
               ],
@@ -163,11 +162,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       style: const TextStyle(
                           color: AppColors.success, fontSize: 13),
                     )
+                  else if (_selectedDate == today)
+                    const Text(
+                      'In progress',
+                      style:
+                          TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                    )
                   else
-                    Text(
-                      _selectedDate == today ? 'Not yet completed' : 'Missed',
-                      style: const TextStyle(
-                          color: AppColors.textMuted, fontSize: 13),
+                    const Text(
+                      'Missed',
+                      style:
+                          TextStyle(color: AppColors.missed, fontSize: 13),
                     ),
                 ],
               ),
@@ -231,12 +236,19 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           ),
                         ],
                       ),
-                      Text(
-                        _formatTime(s.completedAt),
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 13,
-                        ),
+                      Row(
+                        children: [
+                          Text(
+                            _formatTime(s.completedAt),
+                            style: const TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 13,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Icon(Icons.check_circle,
+                              color: AppColors.success, size: 18),
+                        ],
                       ),
                     ],
                   ),
@@ -251,23 +263,19 @@ class _CalendarScreenState extends State<CalendarScreen> {
         DateTime(_focusedMonth.year, _focusedMonth.month, 1);
     final daysInMonth =
         DateTime(_focusedMonth.year, _focusedMonth.month + 1, 0).day;
-    // Monday = 1, so offset is weekday - 1
     final startWeekday = firstOfMonth.weekday - 1;
 
-    // Find first session date for "missed" marking
     final sortedSessionDates = sessionDates.toList()..sort();
     final firstSessionDate =
         sortedSessionDates.isNotEmpty ? sortedSessionDates.first : null;
 
     final cells = <Widget>[];
-    // Empty cells before first day
     for (var i = 0; i < startWeekday; i++) {
       cells.add(const SizedBox());
     }
 
     for (var day = 1; day <= daysInMonth; day++) {
-      final date =
-          DateTime(_focusedMonth.year, _focusedMonth.month, day);
+      final date = DateTime(_focusedMonth.year, _focusedMonth.month, day);
       final dateStr = formatDate(date);
       final isCompleted = sessionDates.contains(dateStr);
       final isToday = dateStr == today;
@@ -275,9 +283,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
       final isFuture = date.isAfter(DateTime.now());
       final isMissed = !isCompleted &&
           !isFuture &&
+          !isToday &&
           firstSessionDate != null &&
-          dateStr.compareTo(firstSessionDate) >= 0 &&
-          dateStr != today;
+          dateStr.compareTo(firstSessionDate) >= 0;
 
       cells.add(
         GestureDetector(
@@ -285,35 +293,43 @@ class _CalendarScreenState extends State<CalendarScreen> {
           child: Container(
             margin: const EdgeInsets.all(2),
             decoration: BoxDecoration(
-              color: isCompleted ? AppColors.success : Colors.transparent,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: isSelected
-                    ? AppColors.accent
-                    : isToday
-                        ? AppColors.accent
-                        : isMissed
-                            ? AppColors.missed.withValues(alpha: 0.3)
-                            : Colors.transparent,
-                width: isSelected || isToday ? 2 : 1,
-              ),
+              border: isSelected
+                  ? Border.all(color: AppColors.accent, width: 2)
+                  : null,
             ),
-            child: Center(
-              child: Text(
-                '$day',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight:
-                      isToday || isCompleted ? FontWeight.w700 : FontWeight.w400,
-                  color: isCompleted
-                      ? Colors.white
-                      : isMissed
-                          ? AppColors.missed
-                          : isFuture
-                              ? AppColors.textMuted
-                              : AppColors.text,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  '$day',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight:
+                        isToday || isCompleted ? FontWeight.w700 : FontWeight.w400,
+                    color: isCompleted
+                        ? AppColors.success
+                        : isMissed
+                            ? AppColors.missed
+                            : isToday
+                                ? AppColors.accent
+                                : isFuture
+                                    ? AppColors.textMuted
+                                    : AppColors.text,
+                  ),
                 ),
-              ),
+                const SizedBox(height: 1),
+                if (isCompleted)
+                  const Icon(Icons.check_circle,
+                      color: AppColors.success, size: 14)
+                else if (isMissed)
+                  const Icon(Icons.cancel, color: AppColors.missed, size: 14)
+                else if (isToday)
+                  Icon(Icons.radio_button_unchecked,
+                      color: AppColors.accent.withValues(alpha: 0.6), size: 14)
+                else
+                  const SizedBox(height: 14),
+              ],
             ),
           ),
         ),
@@ -326,7 +342,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         crossAxisCount: 7,
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
-        childAspectRatio: 1,
+        childAspectRatio: 0.85,
         children: cells,
       ),
     );

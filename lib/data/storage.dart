@@ -22,6 +22,14 @@ Future<void> saveSession(Session session) async {
       _sessionsKey, jsonEncode(sessions.map((s) => s.toJson()).toList()));
 }
 
+Future<void> removeSession(String date) async {
+  final sessions = await getSessions();
+  sessions.removeWhere((s) => s.date == date);
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setString(
+      _sessionsKey, jsonEncode(sessions.map((s) => s.toJson()).toList()));
+}
+
 Future<bool> isTodayComplete() async {
   final today = formatDate(DateTime.now());
   final sessions = await getSessions();

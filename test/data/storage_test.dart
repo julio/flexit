@@ -72,6 +72,44 @@ void main() {
     });
   });
 
+  group('removeSession', () {
+    test('removes a session by date', () async {
+      await saveSession(const Session(
+        date: '2026-04-10',
+        completedAt: '2026-04-10T10:00:00.000',
+        type: 'daily',
+      ));
+      await saveSession(const Session(
+        date: '2026-04-11',
+        completedAt: '2026-04-11T10:00:00.000',
+        type: 'daily',
+      ));
+
+      await removeSession('2026-04-10');
+      final sessions = await getSessions();
+      expect(sessions.length, 1);
+      expect(sessions[0].date, '2026-04-11');
+    });
+
+    test('does nothing when date not found', () async {
+      await saveSession(const Session(
+        date: '2026-04-10',
+        completedAt: '2026-04-10T10:00:00.000',
+        type: 'daily',
+      ));
+
+      await removeSession('2026-04-15');
+      final sessions = await getSessions();
+      expect(sessions.length, 1);
+    });
+
+    test('handles empty sessions list', () async {
+      await removeSession('2026-04-10');
+      final sessions = await getSessions();
+      expect(sessions, isEmpty);
+    });
+  });
+
   group('isTodayComplete', () {
     test('returns false when no sessions', () async {
       expect(await isTodayComplete(), false);
