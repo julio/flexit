@@ -1,0 +1,199 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flexit/data/storage.dart';
+import 'package:flexit/models/session.dart';
+
+void main() {
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
+  group('formatDate', () {
+    test('formats single-digit month and day with padding', () {
+      expect(formatDate(DateTime(2026, 1, 5)), '2026-01-05');
+    });
+
+    test('formats double-digit month and day', () {
+      expect(formatDate(DateTime(2026, 12, 25)), '2026-12-25');
+    });
+  });
+
+  group('getSessions / saveSession', () {
+    test('returns empty list when no sessions saved', () async {
+      final sessions = await getSessions();
+      expect(sessions, isEmpty);
+    });
+
+    test('saves and retrieves a session', () async {
+      await saveSession(const Session(
+        date: '2026-04-10',
+        completedAt: '2026-04-10T10:00:00.000',
+        type: 'daily',
+      ));
+
+      final sessions = await getSessions();
+      expect(sessions.length, 1);
+      expect(sessions[0].date, '2026-04-10');
+      expect(sessions[0].type, 'daily');
+    });
+
+    test('replaces session with same date', () async {
+      await saveSession(const Session(
+        date: '2026-04-10',
+        completedAt: '2026-04-10T10:00:00.000',
+        type: 'daily',
+      ));
+      await saveSession(const Session(
+        date: '2026-04-10',
+        completedAt: '2026-04-10T15:00:00.000',
+        type: 'weekend',
+      ));
+
+      final sessions = await getSessions();
+      expect(sessions.length, 1);
+      expect(sessions[0].completedAt, '2026-04-10T15:00:00.000');
+      expect(sessions[0].type, 'weekend');
+    });
+
+    test('stores multiple sessions for different dates', () async {
+      await saveSession(const Session(
+        date: '2026-04-10',
+        completedAt: '2026-04-10T10:00:00.000',
+        type: 'daily',
+      ));
+      await saveSession(const Session(
+        date: '2026-04-11',
+        completedAt: '2026-04-11T10:00:00.000',
+        type: 'daily',
+      ));
+
+      final sessions = await getSessions();
+      expect(sessions.length, 2);
+    });
+  });
+
+  group('isTodayComplete', () {
+    test('returns false when no sessions', () async {
+      expect(await isTodayComplete(), false);
+    });
+
+    test('returns true when today has a session', () async {
+      final today = formatDate(DateTime.now());
+      await saveSession(Session(
+        date: today,
+        completedAt: DateTime.now().toIso8601String(),
+        type: 'daily',
+      ));
+      expect(await isTodayComplete(), true);
+    });
+  });
+
+  group('getCurrentStreak', () {
+    test('returns 0 for empty sessions', () {
+      expect(getCurrentStreak([]), 0);
+    });
+
+    test('returns 1 when only today is done', () {
+      final today = formatDate(DateTime.now());
+      final sessions = [
+        Session(date: today, completedAt: '', type: 'daily'),
+      ];
+      expect(getCurrentStreak(sessions), 1);
+    });
+
+    test('counts consecutive days backwards', () {
+      final now = DateTime.now();
+      final sessions = List.generate(
+        5,
+        (i) => Session(
+          date: formatDate(now.subtract(Duration(days: i))),
+          completedAt: '',
+          type: 'daily',
+        ),
+      );
+      expect(getCurrentStreak(sessions), 5);
+    });
+
+    test('streak from yesterday when today not done', () {
+      final now = DateTime.now();
+      final sessions = [
+        Session(
+            date: formatDate(now.subtract(const Duration(days: 1))),
+            completedAt: '',
+            type: 'daily'),
+        Session(
+            date: formatDate(now.subtract(const Duration(days: 2))),
+            completedAt: '',
+            type: 'daily'),
+      ];
+      expect(getCurrentStreak(sessions), 2);
+    });
+
+    test('breaks streak on gap', () {
+      final now = DateTime.now();
+      final sessions = [
+        Session(date: formatDate(now), completedAt: '', type: 'daily'),
+        // skip yesterday
+        Session(
+            date: formatDate(now.subtract(const Duration(days: 2))),
+            completedAt: '',
+            type: 'daily'),
+      ];
+      expect(getCurrentStreak(sessions), 1);
+    });
+  });
+
+  group('getLongestStreak', () {
+    test('returns 0 for empty sessions', () {
+      expect(getLongestStreak([]), 0);
+    });
+
+    test('returns 1 for single session', () {
+      final sessions = [
+        const Session(date: '2026-04-10', completedAt: '', type: 'daily'),
+      ];
+      expect(getLongestStreak(sessions), 1);
+    });
+
+    test('finds longest consecutive run', () {
+      final sessions = [
+        const Session(date: '2026-04-01', completedAt: '', type: 'daily'),
+        const Session(date: '2026-04-02', completedAt: '', type: 'daily'),
+        const Session(date: '2026-04-03', completedAt: '', type: 'daily'),
+        // gap
+        const Session(date: '2026-04-05', completedAt: '', type: 'daily'),
+        const Session(date: '2026-04-06', completedAt: '', type: 'daily'),
+      ];
+      expect(getLongestStreak(sessions), 3);
+    });
+
+    test('handles unsorted input', () {
+      final sessions = [
+        const Session(date: '2026-04-03', completedAt: '', type: 'daily'),
+        const Session(date: '2026-04-01', completedAt: '', type: 'daily'),
+        const Session(date: '2026-04-02', completedAt: '', type: 'daily'),
+      ];
+      expect(getLongestStreak(sessions), 3);
+    });
+  });
+
+  group('exercise completion tracking', () {
+    test('returns empty set when nothing saved', () async {
+      final completed = await getTodayCompletedExercises();
+      expect(completed, isEmpty);
+    });
+
+    test('saves and retrieves completed exercises', () async {
+      await saveTodayCompletedExercises({'cat-cow', 'hip-cars'});
+      final completed = await getTodayCompletedExercises();
+      expect(completed, {'cat-cow', 'hip-cars'});
+    });
+
+    test('overwrites previous exercise completions', () async {
+      await saveTodayCompletedExercises({'cat-cow'});
+      await saveTodayCompletedExercises({'cat-cow', 'hip-cars', '90-90'});
+      final completed = await getTodayCompletedExercises();
+      expect(completed.length, 3);
+    });
+  });
+}

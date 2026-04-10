@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/session.dart';
 
 const _sessionsKey = 'flexit_sessions';
+const _exercisesPrefix = 'flexit_exercises_';
 
 Future<List<Session>> getSessions() async {
   final prefs = await SharedPreferences.getInstance();
@@ -25,6 +26,19 @@ Future<bool> isTodayComplete() async {
   final today = formatDate(DateTime.now());
   final sessions = await getSessions();
   return sessions.any((s) => s.date == today);
+}
+
+Future<Set<String>> getTodayCompletedExercises() async {
+  final prefs = await SharedPreferences.getInstance();
+  final today = formatDate(DateTime.now());
+  final raw = prefs.getStringList('$_exercisesPrefix$today');
+  return raw?.toSet() ?? {};
+}
+
+Future<void> saveTodayCompletedExercises(Set<String> exerciseIds) async {
+  final prefs = await SharedPreferences.getInstance();
+  final today = formatDate(DateTime.now());
+  await prefs.setStringList('$_exercisesPrefix$today', exerciseIds.toList());
 }
 
 String formatDate(DateTime d) {

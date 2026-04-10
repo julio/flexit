@@ -18,6 +18,7 @@ class _TodayScreenState extends State<TodayScreen> {
   bool _done = false;
   int _streak = 0;
   bool _loading = true;
+  Set<String> _completedExercises = {};
 
   @override
   void initState() {
@@ -28,13 +29,48 @@ class _TodayScreenState extends State<TodayScreen> {
   Future<void> _loadState() async {
     final done = await isTodayComplete();
     final sessions = await getSessions();
+    final completed = await getTodayCompletedExercises();
     if (mounted) {
       setState(() {
         _done = done;
         _streak = getCurrentStreak(sessions);
+        _completedExercises = completed;
         _loading = false;
       });
     }
+  }
+
+  Future<void> _toggleExercise(String exerciseId) async {
+    final updated = Set<String>.from(_completedExercises);
+    if (updated.contains(exerciseId)) {
+      updated.remove(exerciseId);
+    } else {
+      updated.add(exerciseId);
+      HapticFeedback.mediumImpact();
+    }
+
+    await saveTodayCompletedExercises(updated);
+    setState(() => _completedExercises = updated);
+
+    // Auto check-out when all exercises are done
+    if (!_done) {
+      final blocks = getTodayBlocks();
+      final allIds = blocks.expand((b) => b.exercises).map((e) => e.id).toSet();
+      if (allIds.difference(updated).isEmpty) {
+        await _doCheckOut();
+      }
+    }
+  }
+
+  Future<void> _doCheckOut() async {
+    final today = formatDate(DateTime.now());
+    await saveSession(Session(
+      date: today,
+      completedAt: DateTime.now().toIso8601String(),
+      type: isWeekendDay() ? 'weekend' : 'daily',
+    ));
+    HapticFeedback.heavyImpact();
+    await _loadState();
   }
 
   Future<void> _checkOut() async {
@@ -44,14 +80,15 @@ class _TodayScreenState extends State<TodayScreen> {
         backgroundColor: AppColors.card,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Check Out',
-            style: TextStyle(color: AppColors.text, fontWeight: FontWeight.w700)),
+            style:
+                TextStyle(color: AppColors.text, fontWeight: FontWeight.w700)),
         content: const Text("Mark today's session as complete?",
             style: TextStyle(color: AppColors.textSecondary)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child:
-                const Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
+            child: const Text('Cancel',
+                style: TextStyle(color: AppColors.textSecondary)),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
@@ -64,15 +101,7 @@ class _TodayScreenState extends State<TodayScreen> {
     );
 
     if (confirmed != true) return;
-
-    final today = formatDate(DateTime.now());
-    await saveSession(Session(
-      date: today,
-      completedAt: DateTime.now().toIso8601String(),
-      type: isWeekendDay() ? 'weekend' : 'daily',
-    ));
-    HapticFeedback.heavyImpact();
-    await _loadState();
+    await _doCheckOut();
   }
 
   @override
@@ -81,6 +110,7 @@ class _TodayScreenState extends State<TodayScreen> {
     final isWeekend = isWeekendDay();
     final totalExercises =
         blocks.fold<int>(0, (sum, b) => sum + b.exercises.length);
+    final completedCount = _completedExercises.length;
 
     if (_loading) {
       return const Scaffold(
@@ -96,7 +126,7 @@ class _TodayScreenState extends State<TodayScreen> {
             slivers: [
               SliverAppBar(
                 pinned: true,
-                expandedHeight: _streak > 0 ? 130 : 110,
+                expandedHeight: _streak > 0 ? 140 : 120,
                 flexibleSpace: FlexibleSpaceBar(
                   background: Padding(
                     padding: const EdgeInsets.fromLTRB(20, 60, 20, 0),
@@ -112,12 +142,23 @@ class _TodayScreenState extends State<TodayScreen> {
                           ),
                         ),
                         const SizedBox(height: 4),
-                        Text(
-                          '$totalExercises exercises \u00b7 ${isWeekend ? "~25 min" : "~15 min"}',
-                          style: const TextStyle(
-                            fontSize: 15,
-                            color: AppColors.textSecondary,
-                          ),
+                        Row(
+                          children: [
+                            Text(
+                              '$completedCount/$totalExercises exercises',
+                              style: const TextStyle(
+                                fontSize: 15,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                            Text(
+                              ' \u00b7 ${isWeekend ? "~25 min" : "~15 min"}',
+                              style: const TextStyle(
+                                fontSize: 15,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
                         ),
                         if (_streak > 0) ...[
                           const SizedBox(height: 10),
@@ -143,6 +184,24 @@ class _TodayScreenState extends State<TodayScreen> {
                   ),
                 ),
               ),
+              // Progress bar
+              if (!_done && totalExercises > 0)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: completedCount / totalExercises,
+                        backgroundColor: AppColors.cardBorder,
+                        color: completedCount == totalExercises
+                            ? AppColors.success
+                            : AppColors.accent,
+                        minHeight: 4,
+                      ),
+                    ),
+                  ),
+                ),
               if (_done)
                 SliverToBoxAdapter(
                   child: Padding(
@@ -153,7 +212,8 @@ class _TodayScreenState extends State<TodayScreen> {
                         color: AppColors.successDim,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                            color: AppColors.success.withValues(alpha: 0.25)),
+                            color:
+                                AppColors.success.withValues(alpha: 0.25)),
                       ),
                       child: const Text(
                         "Today's session complete",
@@ -171,8 +231,11 @@ class _TodayScreenState extends State<TodayScreen> {
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 120),
                 sliver: SliverList(
                   delegate: SliverChildBuilderDelegate(
-                    (context, index) =>
-                        _BlockCard(block: blocks[index]),
+                    (context, index) => _BlockCard(
+                      block: blocks[index],
+                      completedExercises: _completedExercises,
+                      onToggle: _toggleExercise,
+                    ),
                     childCount: blocks.length,
                   ),
                 ),
@@ -219,10 +282,21 @@ class _TodayScreenState extends State<TodayScreen> {
 
 class _BlockCard extends StatelessWidget {
   final ExerciseBlock block;
-  const _BlockCard({required this.block});
+  final Set<String> completedExercises;
+  final ValueChanged<String> onToggle;
+
+  const _BlockCard({
+    required this.block,
+    required this.completedExercises,
+    required this.onToggle,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final blockDoneCount =
+        block.exercises.where((e) => completedExercises.contains(e.id)).length;
+    final allDone = blockDoneCount == block.exercises.length;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 24),
       child: Column(
@@ -233,14 +307,24 @@ class _BlockCard extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  block.title.toUpperCase(),
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.accent,
-                    letterSpacing: 0.8,
-                  ),
+                Row(
+                  children: [
+                    if (allDone)
+                      const Padding(
+                        padding: EdgeInsets.only(right: 6),
+                        child: Icon(Icons.check_circle,
+                            color: AppColors.success, size: 16),
+                      ),
+                    Text(
+                      block.title.toUpperCase(),
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: allDone ? AppColors.success : AppColors.accent,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                  ],
                 ),
                 Text(
                   block.duration,
@@ -252,7 +336,11 @@ class _BlockCard extends StatelessWidget {
               ],
             ),
           ),
-          ...block.exercises.map((e) => _ExerciseCard(exercise: e)),
+          ...block.exercises.map((e) => _ExerciseCard(
+                exercise: e,
+                isDone: completedExercises.contains(e.id),
+                onToggle: () => onToggle(e.id),
+              )),
         ],
       ),
     );
@@ -261,79 +349,127 @@ class _BlockCard extends StatelessWidget {
 
 class _ExerciseCard extends StatelessWidget {
   final Exercise exercise;
-  const _ExerciseCard({required this.exercise});
+  final bool isDone;
+  final VoidCallback onToggle;
+
+  const _ExerciseCard({
+    required this.exercise,
+    required this.isDone,
+    required this.onToggle,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.cardBorder),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            exercise.name,
-            style: const TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w600,
-              color: AppColors.text,
-            ),
+    return GestureDetector(
+      onTap: onToggle,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isDone ? AppColors.successDim : AppColors.card,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isDone
+                ? AppColors.success.withValues(alpha: 0.3)
+                : AppColors.cardBorder,
           ),
-          const SizedBox(height: 2),
-          Text(
-            exercise.duration,
-            style: const TextStyle(
-              fontSize: 13,
-              color: AppColors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            exercise.description,
-            style: const TextStyle(
-              fontSize: 14,
-              color: AppColors.textSecondary,
-              height: 1.5,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            exercise.cue,
-            style: const TextStyle(
-              fontSize: 13,
-              color: AppColors.accent,
-              fontStyle: FontStyle.italic,
-            ),
-          ),
-          if (exercise.videoUrl != null) ...[
-            const SizedBox(height: 10),
-            GestureDetector(
-              onTap: () => launchUrl(Uri.parse(exercise.videoUrl!),
-                  mode: LaunchMode.externalApplication),
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 2, right: 14),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 24,
+                height: 24,
                 decoration: BoxDecoration(
-                  color: AppColors.accentDim,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Text(
-                  'Watch video',
-                  style: TextStyle(
-                    color: AppColors.accent,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
+                  color: isDone ? AppColors.success : Colors.transparent,
+                  borderRadius: BorderRadius.circular(7),
+                  border: Border.all(
+                    color: isDone ? AppColors.success : AppColors.textMuted,
+                    width: 2,
                   ),
                 ),
+                child: isDone
+                    ? const Icon(Icons.check, color: Colors.white, size: 16)
+                    : null,
+              ),
+            ),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    exercise.name,
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w600,
+                      color: isDone ? AppColors.success : AppColors.text,
+                      decoration:
+                          isDone ? TextDecoration.lineThrough : null,
+                      decorationColor: AppColors.success,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    exercise.duration,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: isDone
+                          ? AppColors.success.withValues(alpha: 0.6)
+                          : AppColors.textSecondary,
+                    ),
+                  ),
+                  if (!isDone) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      exercise.description,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: AppColors.textSecondary,
+                        height: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      exercise.cue,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.accent,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                    if (exercise.videoUrl != null) ...[
+                      const SizedBox(height: 10),
+                      GestureDetector(
+                        onTap: () => launchUrl(Uri.parse(exercise.videoUrl!),
+                            mode: LaunchMode.externalApplication),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 7),
+                          decoration: BoxDecoration(
+                            color: AppColors.accentDim,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Text(
+                            'Watch video',
+                            style: TextStyle(
+                              color: AppColors.accent,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ],
               ),
             ),
           ],
-        ],
+        ),
       ),
     );
   }
