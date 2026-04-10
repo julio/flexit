@@ -141,35 +141,20 @@ function BlockCard({ block }: { block: ExerciseBlock }) {
 }
 
 function ExerciseCard({ exercise }: { exercise: Exercise }) {
-  const [expanded, setExpanded] = useState(false);
-
   return (
-    <Pressable
-      style={styles.exerciseCard}
-      onPress={() => setExpanded(!expanded)}>
-      <View style={styles.exerciseHeader}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.exerciseName}>{exercise.name}</Text>
-          <Text style={styles.exerciseDuration}>{exercise.duration}</Text>
-        </View>
-        <Text style={styles.chevron}>{expanded ? '\u25B2' : '\u25BC'}</Text>
-      </View>
-      {expanded && (
-        <View style={styles.exerciseDetails}>
-          <Text style={styles.exerciseDescription}>
-            {exercise.description}
-          </Text>
-          <Text style={styles.exerciseCue}>{exercise.cue}</Text>
-          {exercise.videoUrl && (
-            <Pressable
-              style={styles.videoLink}
-              onPress={() => Linking.openURL(exercise.videoUrl!)}>
-              <Text style={styles.videoLinkText}>Watch video</Text>
-            </Pressable>
-          )}
-        </View>
+    <View style={styles.exerciseCard}>
+      <Text style={styles.exerciseName}>{exercise.name}</Text>
+      <Text style={styles.exerciseDuration}>{exercise.duration}</Text>
+      <Text style={styles.exerciseDescription}>{exercise.description}</Text>
+      <Text style={styles.exerciseCue}>{exercise.cue}</Text>
+      {exercise.videoUrl && (
+        <Pressable
+          style={styles.videoLink}
+          onPress={() => Linking.openURL(exercise.videoUrl!)}>
+          <Text style={styles.videoLinkText}>Watch video</Text>
+        </Pressable>
       )}
-    </Pressable>
+    </View>
   );
 }
 
@@ -254,10 +239,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.cardBorder,
   },
-  exerciseHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
   exerciseName: {
     fontSize: 17,
     fontWeight: '600',
@@ -268,21 +249,11 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     marginTop: 2,
   },
-  chevron: {
-    color: Colors.textMuted,
-    fontSize: 10,
-    marginLeft: 8,
-  },
-  exerciseDetails: {
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: Colors.cardBorder,
-  },
   exerciseDescription: {
     fontSize: 14,
     color: Colors.textSecondary,
     lineHeight: 21,
+    marginTop: 10,
   },
   exerciseCue: {
     fontSize: 13,
