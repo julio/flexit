@@ -7,10 +7,10 @@ class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
 
   @override
-  State<CalendarScreen> createState() => _CalendarScreenState();
+  State<CalendarScreen> createState() => CalendarScreenState();
 }
 
-class _CalendarScreenState extends State<CalendarScreen> {
+class CalendarScreenState extends State<CalendarScreen> {
   List<Session> _sessions = [];
   DateTime _focusedMonth = DateTime.now();
   String? _selectedDate;
@@ -25,6 +25,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final sessions = await getSessions();
     if (mounted) setState(() => _sessions = sessions);
   }
+
+  void reload() => _loadSessions();
 
   @override
   Widget build(BuildContext context) {

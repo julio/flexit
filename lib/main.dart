@@ -36,18 +36,17 @@ class HomeShell extends StatefulWidget {
 
 class _HomeShellState extends State<HomeShell> {
   int _currentIndex = 0;
-
-  final _screens = const [
-    TodayScreen(),
-    CalendarScreen(),
-  ];
+  final _calendarKey = GlobalKey<CalendarScreenState>();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: IndexedStack(
         index: _currentIndex,
-        children: _screens,
+        children: [
+          const TodayScreen(),
+          CalendarScreen(key: _calendarKey),
+        ],
       ),
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(
@@ -55,7 +54,10 @@ class _HomeShellState extends State<HomeShell> {
         ),
         child: BottomNavigationBar(
           currentIndex: _currentIndex,
-          onTap: (i) => setState(() => _currentIndex = i),
+          onTap: (i) {
+            setState(() => _currentIndex = i);
+            if (i == 1) _calendarKey.currentState?.reload();
+          },
           items: const [
             BottomNavigationBarItem(
               icon: Icon(Icons.wb_sunny_outlined),
