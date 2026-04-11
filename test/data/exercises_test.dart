@@ -52,7 +52,20 @@ void main() {
   });
 
   group('getTodayBlocks', () {
-    test('returns at least daily blocks', () {
+    test('returns 4 blocks on a weekday', () {
+      // April 13, 2026 is Monday
+      final blocks = getTodayBlocks(DateTime(2026, 4, 13));
+      expect(blocks.length, 4);
+    });
+
+    test('returns 5 blocks on a weekend', () {
+      // April 11, 2026 is Saturday
+      final blocks = getTodayBlocks(DateTime(2026, 4, 11));
+      expect(blocks.length, 5);
+      expect(blocks.last.id, 'weekend');
+    });
+
+    test('defaults to today', () {
       final blocks = getTodayBlocks();
       expect(blocks.length, greaterThanOrEqualTo(4));
     });
@@ -77,6 +90,11 @@ void main() {
     test('Friday is not weekend', () {
       // April 10, 2026 is Friday
       expect(isWeekendDay(DateTime(2026, 4, 10)), false);
+    });
+
+    test('defaults to today without error', () {
+      // Just verify it runs without an argument
+      expect(isWeekendDay(), isA<bool>());
     });
   });
 }

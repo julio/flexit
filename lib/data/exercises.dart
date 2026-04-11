@@ -156,10 +156,9 @@ const weekendExtras = ExerciseBlock(
   ],
 );
 
-List<ExerciseBlock> getTodayBlocks() {
-  final day = DateTime.now().weekday;
-  final isWeekend = day == DateTime.saturday || day == DateTime.sunday;
-  if (isWeekend) {
+List<ExerciseBlock> getTodayBlocks([DateTime? date]) {
+  final d = date ?? DateTime.now();
+  if (isWeekendDay(d)) {
     return [...dailyBlocks, weekendExtras];
   }
   return dailyBlocks;
