@@ -234,4 +234,50 @@ void main() {
       expect(completed.length, 3);
     });
   });
+
+  group('getCompletedExercises', () {
+    test('returns empty set for date with no data', () async {
+      final completed = await getCompletedExercises('2026-04-10');
+      expect(completed, isEmpty);
+    });
+
+    test('saves and retrieves exercises for a specific date', () async {
+      await saveCompletedExercises('2026-04-10', {'cat-cow', 'hip-cars'});
+      final completed = await getCompletedExercises('2026-04-10');
+      expect(completed, {'cat-cow', 'hip-cars'});
+    });
+
+    test('different dates have independent data', () async {
+      await saveCompletedExercises('2026-04-10', {'cat-cow'});
+      await saveCompletedExercises('2026-04-11', {'hip-cars', '90-90'});
+
+      final day1 = await getCompletedExercises('2026-04-10');
+      final day2 = await getCompletedExercises('2026-04-11');
+      expect(day1, {'cat-cow'});
+      expect(day2, {'hip-cars', '90-90'});
+    });
+
+    test('overwrites exercises for the same date', () async {
+      await saveCompletedExercises('2026-04-10', {'cat-cow'});
+      await saveCompletedExercises('2026-04-10', {'cat-cow', 'hip-cars'});
+      final completed = await getCompletedExercises('2026-04-10');
+      expect(completed, {'cat-cow', 'hip-cars'});
+    });
+
+    test('getTodayCompletedExercises delegates to getCompletedExercises',
+        () async {
+      final today = formatDate(DateTime.now());
+      await saveCompletedExercises(today, {'cat-cow', 'pigeon'});
+      final completed = await getTodayCompletedExercises();
+      expect(completed, {'cat-cow', 'pigeon'});
+    });
+
+    test('saveTodayCompletedExercises delegates to saveCompletedExercises',
+        () async {
+      await saveTodayCompletedExercises({'glute-bridge'});
+      final today = formatDate(DateTime.now());
+      final completed = await getCompletedExercises(today);
+      expect(completed, {'glute-bridge'});
+    });
+  });
 }

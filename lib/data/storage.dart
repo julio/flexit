@@ -36,17 +36,24 @@ Future<bool> isTodayComplete() async {
   return sessions.any((s) => s.date == today);
 }
 
-Future<Set<String>> getTodayCompletedExercises() async {
+Future<Set<String>> getCompletedExercises(String date) async {
   final prefs = await SharedPreferences.getInstance();
-  final today = formatDate(DateTime.now());
-  final raw = prefs.getStringList('$_exercisesPrefix$today');
+  final raw = prefs.getStringList('$_exercisesPrefix$date');
   return raw?.toSet() ?? {};
 }
 
-Future<void> saveTodayCompletedExercises(Set<String> exerciseIds) async {
+Future<Set<String>> getTodayCompletedExercises() async {
+  return getCompletedExercises(formatDate(DateTime.now()));
+}
+
+Future<void> saveCompletedExercises(
+    String date, Set<String> exerciseIds) async {
   final prefs = await SharedPreferences.getInstance();
-  final today = formatDate(DateTime.now());
-  await prefs.setStringList('$_exercisesPrefix$today', exerciseIds.toList());
+  await prefs.setStringList('$_exercisesPrefix$date', exerciseIds.toList());
+}
+
+Future<void> saveTodayCompletedExercises(Set<String> exerciseIds) async {
+  await saveCompletedExercises(formatDate(DateTime.now()), exerciseIds);
 }
 
 String formatDate(DateTime d) {

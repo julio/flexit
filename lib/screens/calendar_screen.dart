@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../data/exercises.dart';
 import '../data/storage.dart';
 import '../models/session.dart';
 import '../theme.dart';
@@ -14,6 +15,7 @@ class CalendarScreenState extends State<CalendarScreen> {
   List<Session> _sessions = [];
   DateTime _focusedMonth = DateTime.now();
   String? _selectedDate;
+  Set<String> _selectedDateExercises = {};
 
   @override
   void initState() {
@@ -24,6 +26,16 @@ class CalendarScreenState extends State<CalendarScreen> {
   Future<void> _loadSessions() async {
     final sessions = await getSessions();
     if (mounted) setState(() => _sessions = sessions);
+  }
+
+  Future<void> _selectDate(String dateStr) async {
+    final exercises = await getCompletedExercises(dateStr);
+    if (mounted) {
+      setState(() {
+        _selectedDate = dateStr;
+        _selectedDateExercises = exercises;
+      });
+    }
   }
 
   void reload() => _loadSessions();
@@ -139,45 +151,10 @@ class CalendarScreenState extends State<CalendarScreen> {
           // Selected date detail
           if (_selectedDate != null) ...[
             const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: AppColors.card,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.cardBorder),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _formatDisplayDate(_selectedDate!),
-                    style: const TextStyle(
-                      color: AppColors.text,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  if (selectedSession != null)
-                    Text(
-                      'Completed at ${_formatTime(selectedSession.completedAt)} \u00b7 ${selectedSession.type == 'weekend' ? 'Weekend deep session' : 'Daily 15'}',
-                      style: const TextStyle(
-                          color: AppColors.success, fontSize: 13),
-                    )
-                  else if (_selectedDate == today)
-                    const Text(
-                      'In progress',
-                      style:
-                          TextStyle(color: AppColors.textSecondary, fontSize: 13),
-                    )
-                  else
-                    const Text(
-                      'Missed',
-                      style:
-                          TextStyle(color: AppColors.missed, fontSize: 13),
-                    ),
-                ],
-              ),
+            _buildSelectedDateDetail(
+              selectedSession: selectedSession,
+              isToday: _selectedDate == today,
+              sessionDates: sessionDates,
             ),
           ],
 
@@ -291,7 +268,7 @@ class CalendarScreenState extends State<CalendarScreen> {
 
       cells.add(
         GestureDetector(
-          onTap: () => setState(() => _selectedDate = dateStr),
+          onTap: () => _selectDate(dateStr),
           child: Container(
             margin: const EdgeInsets.all(2),
             decoration: BoxDecoration(
@@ -346,6 +323,101 @@ class CalendarScreenState extends State<CalendarScreen> {
         physics: const NeverScrollableScrollPhysics(),
         childAspectRatio: 0.85,
         children: cells,
+      ),
+    );
+  }
+
+  Widget _buildSelectedDateDetail({
+    required Session? selectedSession,
+    required bool isToday,
+    required Set<String> sessionDates,
+  }) {
+    final date = DateTime.parse(_selectedDate!);
+    final blocks = getTodayBlocks(date);
+    final allExercises = blocks.expand((b) => b.exercises).toList();
+    final completedCount =
+        allExercises.where((e) => _selectedDateExercises.contains(e.id)).length;
+    final hasExerciseData = _selectedDateExercises.isNotEmpty;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.cardBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            _formatDisplayDate(_selectedDate!),
+            style: const TextStyle(
+              color: AppColors.text,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 4),
+          if (selectedSession != null)
+            Text(
+              'Completed at ${_formatTime(selectedSession.completedAt)} · ${selectedSession.type == 'weekend' ? 'Weekend deep session' : 'Daily 15'}',
+              style: const TextStyle(color: AppColors.success, fontSize: 13),
+            )
+          else if (isToday)
+            Text(
+              hasExerciseData
+                  ? 'In progress · $completedCount/${allExercises.length} exercises'
+                  : 'In progress',
+              style:
+                  const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+            )
+          else
+            Text(
+              hasExerciseData
+                  ? 'Missed · $completedCount/${allExercises.length} exercises done'
+                  : 'Missed',
+              style: const TextStyle(color: AppColors.missed, fontSize: 13),
+            ),
+          if (hasExerciseData) ...[
+            const SizedBox(height: 12),
+            ...allExercises.map((e) {
+              final done = _selectedDateExercises.contains(e.id);
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  children: [
+                    Icon(
+                      done ? Icons.check_circle : Icons.radio_button_unchecked,
+                      color: done ? AppColors.success : AppColors.textMuted,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        e.name,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: done ? AppColors.success : AppColors.textMuted,
+                          decoration: done ? TextDecoration.lineThrough : null,
+                          decorationColor: AppColors.success,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      e.duration,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: done
+                            ? AppColors.success.withValues(alpha: 0.6)
+                            : AppColors.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ],
       ),
     );
   }
