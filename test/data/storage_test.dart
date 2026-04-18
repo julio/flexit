@@ -280,4 +280,39 @@ void main() {
       expect(completed, {'glute-bridge'});
     });
   });
+
+  group('getAllCompletedExercises', () {
+    test('returns empty map when nothing saved', () async {
+      final all = await getAllCompletedExercises();
+      expect(all, isEmpty);
+    });
+
+    test('returns a map keyed by date', () async {
+      await saveCompletedExercises('2026-04-10', {'cat-cow'});
+      await saveCompletedExercises('2026-04-11', {'hip-cars', '90-90'});
+
+      final all = await getAllCompletedExercises();
+      expect(all.length, 2);
+      expect(all['2026-04-10'], {'cat-cow'});
+      expect(all['2026-04-11'], {'hip-cars', '90-90'});
+    });
+
+    test('skips dates with empty exercise lists', () async {
+      await saveCompletedExercises('2026-04-10', {'cat-cow'});
+      await saveCompletedExercises('2026-04-11', {});
+
+      final all = await getAllCompletedExercises();
+      expect(all.keys, {'2026-04-10'});
+    });
+
+    test('ignores unrelated SharedPreferences keys', () async {
+      SharedPreferences.setMockInitialValues({
+        'flexit_exercises_2026-04-10': ['cat-cow'],
+        'some_other_key': 'value',
+        'flexit_sessions': '[]',
+      });
+      final all = await getAllCompletedExercises();
+      expect(all.keys, {'2026-04-10'});
+    });
+  });
 }

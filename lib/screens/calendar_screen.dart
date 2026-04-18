@@ -13,6 +13,7 @@ class CalendarScreen extends StatefulWidget {
 
 class CalendarScreenState extends State<CalendarScreen> {
   List<Session> _sessions = [];
+  Map<String, Set<String>> _exercisesByDate = {};
   DateTime _focusedMonth = DateTime.now();
   String? _selectedDate;
   Set<String> _selectedDateExercises = {};
@@ -25,7 +26,13 @@ class CalendarScreenState extends State<CalendarScreen> {
 
   Future<void> _loadSessions() async {
     final sessions = await getSessions();
-    if (mounted) setState(() => _sessions = sessions);
+    final exercisesByDate = await getAllCompletedExercises();
+    if (mounted) {
+      setState(() {
+        _sessions = sessions;
+        _exercisesByDate = exercisesByDate;
+      });
+    }
   }
 
   Future<void> _selectDate(String dateStr) async {
@@ -266,6 +273,13 @@ class CalendarScreenState extends State<CalendarScreen> {
           firstSessionDate != null &&
           dateStr.compareTo(firstSessionDate) >= 0;
 
+      var isPartial = false;
+      if (isMissed) {
+        final done = _exercisesByDate[dateStr]?.length ?? 0;
+        final total = getTodayBlocks(date).expand((b) => b.exercises).length;
+        isPartial = total > 0 && done * 2 >= total;
+      }
+
       cells.add(
         GestureDetector(
           onTap: () => _selectDate(dateStr),
@@ -288,19 +302,23 @@ class CalendarScreenState extends State<CalendarScreen> {
                         isToday || isCompleted ? FontWeight.w700 : FontWeight.w400,
                     color: isCompleted
                         ? AppColors.success
-                        : isMissed
-                            ? AppColors.missed
-                            : isToday
-                                ? AppColors.accent
-                                : isFuture
-                                    ? AppColors.textMuted
-                                    : AppColors.text,
+                        : isPartial
+                            ? AppColors.warning
+                            : isMissed
+                                ? AppColors.missed
+                                : isToday
+                                    ? AppColors.accent
+                                    : isFuture
+                                        ? AppColors.textMuted
+                                        : AppColors.text,
                   ),
                 ),
                 const SizedBox(height: 1),
                 if (isCompleted)
                   const Icon(Icons.check_circle,
                       color: AppColors.success, size: 14)
+                else if (isPartial)
+                  const Icon(Icons.error, color: AppColors.warning, size: 14)
                 else if (isMissed)
                   const Icon(Icons.cancel, color: AppColors.missed, size: 14)
                 else if (isToday)

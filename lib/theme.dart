@@ -10,6 +10,8 @@ class AppColors {
   static const successDim = Color(0x2034D399);
   static const missed = Color(0xFFEF4444);
   static const missedDim = Color(0x20EF4444);
+  static const warning = Color(0xFFFACC15);
+  static const warningDim = Color(0x20FACC15);
   static const text = Color(0xFFF5F5F5);
   static const textSecondary = Color(0xFF999999);
   static const textMuted = Color(0xFF555555);

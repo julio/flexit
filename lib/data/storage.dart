@@ -46,6 +46,18 @@ Future<Set<String>> getTodayCompletedExercises() async {
   return getCompletedExercises(formatDate(DateTime.now()));
 }
 
+Future<Map<String, Set<String>>> getAllCompletedExercises() async {
+  final prefs = await SharedPreferences.getInstance();
+  final result = <String, Set<String>>{};
+  for (final key in prefs.getKeys()) {
+    if (!key.startsWith(_exercisesPrefix)) continue;
+    final list = prefs.getStringList(key);
+    if (list == null || list.isEmpty) continue;
+    result[key.substring(_exercisesPrefix.length)] = list.toSet();
+  }
+  return result;
+}
+
 Future<void> saveCompletedExercises(
     String date, Set<String> exerciseIds) async {
   final prefs = await SharedPreferences.getInstance();
