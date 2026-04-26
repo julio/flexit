@@ -276,7 +276,7 @@ class CalendarScreenState extends State<CalendarScreen> {
       var isPartial = false;
       if (isMissed) {
         final done = _exercisesByDate[dateStr]?.length ?? 0;
-        final total = getTodayBlocks(date).expand((b) => b.exercises).length;
+        final total = dailyBlocks.expand((b) => b.exercises).length;
         isPartial = total > 0 && done * 2 >= total;
       }
 
@@ -350,9 +350,7 @@ class CalendarScreenState extends State<CalendarScreen> {
     required bool isToday,
     required Set<String> sessionDates,
   }) {
-    final date = DateTime.parse(_selectedDate!);
-    final blocks = getTodayBlocks(date);
-    final allExercises = blocks.expand((b) => b.exercises).toList();
+    final allExercises = dailyBlocks.expand((b) => b.exercises).toList();
     final completedCount =
         allExercises.where((e) => _selectedDateExercises.contains(e.id)).length;
     final hasExerciseData = _selectedDateExercises.isNotEmpty;

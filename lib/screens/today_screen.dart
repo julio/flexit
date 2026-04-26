@@ -53,8 +53,8 @@ class _TodayScreenState extends State<TodayScreen> {
     setState(() => _completedExercises = updated);
 
     // Auto-complete session when all exercises are done
-    final blocks = getTodayBlocks();
-    final allIds = blocks.expand((b) => b.exercises).map((e) => e.id).toSet();
+    final allIds =
+        dailyBlocks.expand((b) => b.exercises).map((e) => e.id).toSet();
     final allDone = allIds.difference(updated).isEmpty;
 
     if (allDone && !_done) {
@@ -62,7 +62,7 @@ class _TodayScreenState extends State<TodayScreen> {
       await saveSession(Session(
         date: today,
         completedAt: DateTime.now().toIso8601String(),
-        type: isWeekendDay() ? 'weekend' : 'daily',
+        type: 'daily',
       ));
       HapticFeedback.heavyImpact();
       await _loadState();
@@ -75,10 +75,8 @@ class _TodayScreenState extends State<TodayScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final blocks = getTodayBlocks();
-    final isWeekend = isWeekendDay();
     final totalExercises =
-        blocks.fold<int>(0, (sum, b) => sum + b.exercises.length);
+        dailyBlocks.fold<int>(0, (sum, b) => sum + b.exercises.length);
     final completedCount = _completedExercises.length;
 
     if (_loading) {
@@ -100,9 +98,9 @@ class _TodayScreenState extends State<TodayScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      isWeekend ? 'Weekend Deep Session' : 'Daily 15',
-                      style: const TextStyle(
+                    const Text(
+                      'Daily 15',
+                      style: TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.w800,
                         color: AppColors.text,
@@ -118,9 +116,9 @@ class _TodayScreenState extends State<TodayScreen> {
                             color: AppColors.textSecondary,
                           ),
                         ),
-                        Text(
-                          ' \u00b7 ${isWeekend ? "~25 min" : "~15 min"}',
-                          style: const TextStyle(
+                        const Text(
+                          ' \u00b7 ~15 min',
+                          style: TextStyle(
                             fontSize: 15,
                             color: AppColors.textSecondary,
                           ),
@@ -202,11 +200,11 @@ class _TodayScreenState extends State<TodayScreen> {
             sliver: SliverList(
               delegate: SliverChildBuilderDelegate(
                 (context, index) => _BlockCard(
-                  block: blocks[index],
+                  block: dailyBlocks[index],
                   completedExercises: _completedExercises,
                   onToggle: _toggleExercise,
                 ),
-                childCount: blocks.length,
+                childCount: dailyBlocks.length,
               ),
             ),
           ),
