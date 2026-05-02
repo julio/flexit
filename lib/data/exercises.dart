@@ -2,6 +2,21 @@ import '../models/exercise.dart';
 
 const dailyBlocks = <ExerciseBlock>[
   ExerciseBlock(
+    id: 'block0',
+    title: 'Activate',
+    duration: '1 min',
+    exercises: [
+      Exercise(
+        id: 'jumps',
+        name: '100 Jumps in Place',
+        duration: '100 reps',
+        description:
+            'Stand tall, feet hip-width. Jump straight up off both feet — small, light hops. No rope, just bouncing in place. Land soft on the balls of your feet.',
+        cue: 'Quick and springy. Raises heart rate and warms the calves before mobility work.',
+      ),
+    ],
+  ),
+  ExerciseBlock(
     id: 'block1',
     title: 'Wake Up the Spine + Hips',
     duration: '2 min',
