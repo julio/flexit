@@ -3,8 +3,8 @@ import 'package:flexit/data/exercises.dart';
 
 void main() {
   group('dailyBlocks', () {
-    test('has 6 blocks', () {
-      expect(dailyBlocks.length, 6);
+    test('has 5 blocks', () {
+      expect(dailyBlocks.length, 5);
     });
 
     test('activate block has 1 exercise', () {
@@ -76,6 +76,20 @@ void main() {
       expect(pushUps.reps, isNotNull);
       expect(pushUps.reps!.settingKey, 'push-ups');
       expect(pushUps.reps!.defaultReps, 20);
+    });
+
+    test('pull-ups replaces dead-hang with a 5-rep default rep spec', () {
+      final all =
+          dailyBlocks.expand((b) => b.exercises).map((e) => e.id).toSet();
+      expect(all.contains('dead-hang'), isFalse);
+      expect(all.contains('pull-ups'), isTrue);
+      final pullUps = dailyBlocks
+          .expand((b) => b.exercises)
+          .firstWhere((e) => e.id == 'pull-ups');
+      expect(pullUps.sets, 3);
+      expect(pullUps.reps, isNotNull);
+      expect(pullUps.reps!.settingKey, 'pull-ups');
+      expect(pullUps.reps!.defaultReps, 5);
     });
   });
 }

@@ -94,7 +94,7 @@ const dailyBlocks = <ExerciseBlock>[
   ExerciseBlock(
     id: 'block4',
     title: 'Strength',
-    duration: '10 min',
+    duration: '12 min',
     exercises: [
       Exercise(
         id: 'glute-bridge',
@@ -125,21 +125,15 @@ const dailyBlocks = <ExerciseBlock>[
             'Forearms on the floor, elbows under shoulders, body in a straight line from head to heels. Hold 1 min. Rest 30–45 sec between sets.',
         cue: 'Squeeze glutes and pull belly button toward spine — straight line, no sagging.',
       ),
-    ],
-  ),
-  ExerciseBlock(
-    id: 'block5',
-    title: 'Decompress',
-    duration: '1 min',
-    exercises: [
       Exercise(
-        id: 'dead-hang',
-        name: 'Dead Hang',
-        duration: '45–60 sec total',
+        id: 'pull-ups',
+        name: 'Pull-Ups',
+        duration: '3 × 5 reps',
+        sets: 3,
+        reps: RepSpec(settingKey: 'pull-ups', defaultReps: 5),
         description:
-            'Overhand grip, shoulder-width. Hang completely. Relax shoulders and lower back.',
-        cue: 'Let gravity decompress your spine. 2×30s if needed.',
-        videoUrl: 'https://www.youtube.com/shorts/9eY15prKcUY',
+            'Overhand grip, shoulder-width. Pull until chin clears the bar, lower with control to a full hang. Rest 90–120 sec between sets.',
+        cue: 'Lead with the elbows pulling down. Full hang at the bottom for the lat stretch.',
       ),
     ],
   ),
