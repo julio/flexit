@@ -109,6 +109,7 @@ const dailyBlocks = <ExerciseBlock>[
         id: 'push-ups',
         name: 'Push-Ups',
         duration: '3 × 20 reps',
+        sets: 3,
         description:
             'Hands shoulder-width, body in a straight line from head to heels. Lower chest to just above the floor, push back up. Rest 60–90 sec between sets.',
         cue: 'Brace the core and squeeze glutes — no sagging hips, no piked butt.',
@@ -117,6 +118,7 @@ const dailyBlocks = <ExerciseBlock>[
         id: 'plank',
         name: 'Plank',
         duration: '3 × 1 min',
+        sets: 3,
         description:
             'Forearms on the floor, elbows under shoulders, body in a straight line from head to heels. Hold 1 min. Rest 30–45 sec between sets.',
         cue: 'Squeeze glutes and pull belly button toward spine — straight line, no sagging.',

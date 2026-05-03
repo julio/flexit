@@ -40,12 +40,12 @@ class _TodayScreenState extends State<TodayScreen> {
     }
   }
 
-  Future<void> _toggleExercise(String exerciseId) async {
+  Future<void> _toggleExercise(String atomicId) async {
     final updated = Set<String>.from(_completedExercises);
-    if (updated.contains(exerciseId)) {
-      updated.remove(exerciseId);
+    if (updated.contains(atomicId)) {
+      updated.remove(atomicId);
     } else {
-      updated.add(exerciseId);
+      updated.add(atomicId);
       HapticFeedback.mediumImpact();
     }
 
@@ -53,8 +53,10 @@ class _TodayScreenState extends State<TodayScreen> {
     setState(() => _completedExercises = updated);
 
     // Auto-complete session when all exercises are done
-    final allIds =
-        dailyBlocks.expand((b) => b.exercises).map((e) => e.id).toSet();
+    final allIds = dailyBlocks
+        .expand((b) => b.exercises)
+        .expand((e) => e.atomicIds)
+        .toSet();
     final allDone = allIds.difference(updated).isEmpty;
 
     if (allDone && !_done) {
@@ -75,8 +77,9 @@ class _TodayScreenState extends State<TodayScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final totalExercises =
-        dailyBlocks.fold<int>(0, (sum, b) => sum + b.exercises.length);
+    final totalExercises = dailyBlocks
+        .expand((b) => b.exercises)
+        .fold<int>(0, (sum, e) => sum + e.sets);
     final completedCount = _completedExercises.length;
 
     if (_loading) {
@@ -227,9 +230,9 @@ class _BlockCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final blockDoneCount =
-        block.exercises.where((e) => completedExercises.contains(e.id)).length;
-    final allDone = blockDoneCount == block.exercises.length;
+    final allDone = block.exercises.every(
+      (e) => e.atomicIds.every(completedExercises.contains),
+    );
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 24),
@@ -272,8 +275,8 @@ class _BlockCard extends StatelessWidget {
           ),
           ...block.exercises.map((e) => _ExerciseCard(
                 exercise: e,
-                isDone: completedExercises.contains(e.id),
-                onToggle: () => onToggle(e.id),
+                completedExercises: completedExercises,
+                onToggle: onToggle,
               )),
         ],
       ),
@@ -283,19 +286,23 @@ class _BlockCard extends StatelessWidget {
 
 class _ExerciseCard extends StatelessWidget {
   final Exercise exercise;
-  final bool isDone;
-  final VoidCallback onToggle;
+  final Set<String> completedExercises;
+  final ValueChanged<String> onToggle;
 
   const _ExerciseCard({
     required this.exercise,
-    required this.isDone,
+    required this.completedExercises,
     required this.onToggle,
   });
 
   @override
   Widget build(BuildContext context) {
+    final atomicIds = exercise.atomicIds;
+    final isDone = atomicIds.every(completedExercises.contains);
+    final isMultiSet = exercise.sets > 1;
+
     return GestureDetector(
-      onTap: onToggle,
+      onTap: isMultiSet ? null : () => onToggle(exercise.id),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         margin: const EdgeInsets.only(bottom: 8),
@@ -314,22 +321,41 @@ class _ExerciseCard extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.only(top: 2, right: 14),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                width: 24,
-                height: 24,
-                decoration: BoxDecoration(
-                  color: isDone ? AppColors.success : Colors.transparent,
-                  borderRadius: BorderRadius.circular(7),
-                  border: Border.all(
-                    color: isDone ? AppColors.success : AppColors.textMuted,
-                    width: 2,
-                  ),
-                ),
-                child: isDone
-                    ? const Icon(Icons.check, color: Colors.white, size: 16)
-                    : null,
-              ),
+              child: isMultiSet
+                  ? Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        for (var i = 0; i < atomicIds.length; i++) ...[
+                          if (i > 0) const SizedBox(height: 6),
+                          _SetCheckbox(
+                            label: '${i + 1}',
+                            isDone:
+                                completedExercises.contains(atomicIds[i]),
+                            onTap: () => onToggle(atomicIds[i]),
+                          ),
+                        ],
+                      ],
+                    )
+                  : AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width: 24,
+                      height: 24,
+                      decoration: BoxDecoration(
+                        color:
+                            isDone ? AppColors.success : Colors.transparent,
+                        borderRadius: BorderRadius.circular(7),
+                        border: Border.all(
+                          color: isDone
+                              ? AppColors.success
+                              : AppColors.textMuted,
+                          width: 2,
+                        ),
+                      ),
+                      child: isDone
+                          ? const Icon(Icons.check,
+                              color: Colors.white, size: 16)
+                          : null,
+                    ),
             ),
             Expanded(
               child: Column(
@@ -404,6 +430,49 @@ class _ExerciseCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _SetCheckbox extends StatelessWidget {
+  final String label;
+  final bool isDone;
+  final VoidCallback onTap;
+
+  const _SetCheckbox({
+    required this.label,
+    required this.isDone,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        width: 24,
+        height: 24,
+        decoration: BoxDecoration(
+          color: isDone ? AppColors.success : Colors.transparent,
+          borderRadius: BorderRadius.circular(7),
+          border: Border.all(
+            color: isDone ? AppColors.success : AppColors.textMuted,
+            width: 2,
+          ),
+        ),
+        alignment: Alignment.center,
+        child: isDone
+            ? const Icon(Icons.check, color: Colors.white, size: 14)
+            : Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textMuted,
+                ),
+              ),
       ),
     );
   }

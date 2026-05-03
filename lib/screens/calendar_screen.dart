@@ -276,7 +276,9 @@ class CalendarScreenState extends State<CalendarScreen> {
       var isPartial = false;
       if (isMissed) {
         final done = _exercisesByDate[dateStr]?.length ?? 0;
-        final total = dailyBlocks.expand((b) => b.exercises).length;
+        final total = dailyBlocks
+            .expand((b) => b.exercises)
+            .fold<int>(0, (sum, e) => sum + e.sets);
         isPartial = total > 0 && done * 2 >= total;
       }
 
@@ -351,8 +353,13 @@ class CalendarScreenState extends State<CalendarScreen> {
     required Set<String> sessionDates,
   }) {
     final allExercises = dailyBlocks.expand((b) => b.exercises).toList();
-    final completedCount =
-        allExercises.where((e) => _selectedDateExercises.contains(e.id)).length;
+    final totalAtomic =
+        allExercises.fold<int>(0, (sum, e) => sum + e.sets);
+    final completedCount = allExercises.fold<int>(
+        0,
+        (sum, e) =>
+            sum +
+            e.atomicIds.where(_selectedDateExercises.contains).length);
     final hasExerciseData = _selectedDateExercises.isNotEmpty;
 
     return Container(
@@ -382,7 +389,7 @@ class CalendarScreenState extends State<CalendarScreen> {
           else if (isToday)
             Text(
               hasExerciseData
-                  ? 'In progress · $completedCount/${allExercises.length} exercises'
+                  ? 'In progress · $completedCount/$totalAtomic done'
                   : 'In progress',
               style:
                   const TextStyle(color: AppColors.textSecondary, fontSize: 13),
@@ -390,21 +397,35 @@ class CalendarScreenState extends State<CalendarScreen> {
           else
             Text(
               hasExerciseData
-                  ? 'Missed · $completedCount/${allExercises.length} exercises done'
+                  ? 'Missed · $completedCount/$totalAtomic done'
                   : 'Missed',
               style: const TextStyle(color: AppColors.missed, fontSize: 13),
             ),
           if (hasExerciseData) ...[
             const SizedBox(height: 12),
             ...allExercises.map((e) {
-              final done = _selectedDateExercises.contains(e.id);
+              final doneSets =
+                  e.atomicIds.where(_selectedDateExercises.contains).length;
+              final done = doneSets == e.sets;
+              final partial = doneSets > 0 && !done;
+              final trailing = e.sets > 1
+                  ? '$doneSets/${e.sets} sets'
+                  : e.duration;
               return Padding(
                 padding: const EdgeInsets.only(bottom: 6),
                 child: Row(
                   children: [
                     Icon(
-                      done ? Icons.check_circle : Icons.radio_button_unchecked,
-                      color: done ? AppColors.success : AppColors.textMuted,
+                      done
+                          ? Icons.check_circle
+                          : partial
+                              ? Icons.adjust
+                              : Icons.radio_button_unchecked,
+                      color: done
+                          ? AppColors.success
+                          : partial
+                              ? AppColors.warning
+                              : AppColors.textMuted,
                       size: 16,
                     ),
                     const SizedBox(width: 8),
@@ -413,19 +434,25 @@ class CalendarScreenState extends State<CalendarScreen> {
                         e.name,
                         style: TextStyle(
                           fontSize: 13,
-                          color: done ? AppColors.success : AppColors.textMuted,
+                          color: done
+                              ? AppColors.success
+                              : partial
+                                  ? AppColors.warning
+                                  : AppColors.textMuted,
                           decoration: done ? TextDecoration.lineThrough : null,
                           decorationColor: AppColors.success,
                         ),
                       ),
                     ),
                     Text(
-                      e.duration,
+                      trailing,
                       style: TextStyle(
                         fontSize: 11,
                         color: done
                             ? AppColors.success.withValues(alpha: 0.6)
-                            : AppColors.textMuted,
+                            : partial
+                                ? AppColors.warning
+                                : AppColors.textMuted,
                       ),
                     ),
                   ],

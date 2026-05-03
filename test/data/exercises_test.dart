@@ -38,5 +38,26 @@ void main() {
           dailyBlocks.fold<int>(0, (sum, b) => sum + b.exercises.length);
       expect(total, 11);
     });
+
+    test('push-ups and plank have 3 sets each', () {
+      final pushUps = dailyBlocks
+          .expand((b) => b.exercises)
+          .firstWhere((e) => e.id == 'push-ups');
+      final plank = dailyBlocks
+          .expand((b) => b.exercises)
+          .firstWhere((e) => e.id == 'plank');
+      expect(pushUps.sets, 3);
+      expect(plank.sets, 3);
+      expect(pushUps.atomicIds, ['push-ups:1', 'push-ups:2', 'push-ups:3']);
+      expect(plank.atomicIds, ['plank:1', 'plank:2', 'plank:3']);
+    });
+
+    test('single-set exercises have atomic id equal to id', () {
+      for (final e in dailyBlocks.expand((b) => b.exercises)) {
+        if (e.sets == 1) {
+          expect(e.atomicIds, [e.id]);
+        }
+      }
+    });
   });
 }

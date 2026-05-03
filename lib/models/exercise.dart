@@ -5,6 +5,7 @@ class Exercise {
   final String description;
   final String cue;
   final String? videoUrl;
+  final int sets;
 
   const Exercise({
     required this.id,
@@ -13,7 +14,13 @@ class Exercise {
     required this.description,
     required this.cue,
     this.videoUrl,
+    this.sets = 1,
   });
+
+  List<String> get atomicIds {
+    if (sets <= 1) return [id];
+    return List.generate(sets, (i) => '$id:${i + 1}');
+  }
 }
 
 class ExerciseBlock {
