@@ -12,7 +12,8 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  final Map<String, int> _values = {};
+  final Map<String, int> _timerValues = {};
+  final Map<String, int> _repValues = {};
   bool _loading = true;
 
   @override
@@ -26,26 +27,45 @@ class _SettingsScreenState extends State<SettingsScreen> {
       .where((e) => e.timer != null)
       .toList();
 
+  List<Exercise> get _repped => dailyBlocks
+      .expand((b) => b.exercises)
+      .where((e) => e.reps != null)
+      .toList();
+
   Future<void> _load() async {
-    final values = <String, int>{};
+    final timers = <String, int>{};
     for (final e in _timed) {
       final spec = e.timer!;
-      values[spec.settingKey] =
+      timers[spec.settingKey] =
           await getTimerSeconds(spec.settingKey, spec.defaultSeconds);
+    }
+    final reps = <String, int>{};
+    for (final e in _repped) {
+      final spec = e.reps!;
+      reps[spec.settingKey] =
+          await getRepsCount(spec.settingKey, spec.defaultReps);
     }
     if (mounted) {
       setState(() {
-        _values
+        _timerValues
           ..clear()
-          ..addAll(values);
+          ..addAll(timers);
+        _repValues
+          ..clear()
+          ..addAll(reps);
         _loading = false;
       });
     }
   }
 
-  Future<void> _update(String key, int seconds) async {
-    setState(() => _values[key] = seconds);
+  Future<void> _updateTimer(String key, int seconds) async {
+    setState(() => _timerValues[key] = seconds);
     await setTimerSeconds(key, seconds);
+  }
+
+  Future<void> _updateReps(String key, int reps) async {
+    setState(() => _repValues[key] = reps);
+    await setRepsCount(key, reps);
   }
 
   @override
@@ -58,27 +78,116 @@ class _SettingsScreenState extends State<SettingsScreen> {
           : ListView(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
               children: [
-                const Text(
-                  'TIMERS',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.text,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                ..._timed.map((e) {
-                  final key = e.timer!.settingKey;
-                  final seconds = _values[key] ?? e.timer!.defaultSeconds;
-                  return _TimerSettingTile(
-                    name: e.name,
-                    seconds: seconds,
-                    onChanged: (s) => _update(key, s),
-                  );
-                }),
+                if (_timed.isNotEmpty) ...[
+                  const _SectionHeader('TIMERS'),
+                  const SizedBox(height: 12),
+                  ..._timed.map((e) {
+                    final key = e.timer!.settingKey;
+                    final seconds =
+                        _timerValues[key] ?? e.timer!.defaultSeconds;
+                    return _TimerSettingTile(
+                      name: e.name,
+                      seconds: seconds,
+                      onChanged: (s) => _updateTimer(key, s),
+                    );
+                  }),
+                  const SizedBox(height: 16),
+                ],
+                if (_repped.isNotEmpty) ...[
+                  const _SectionHeader('REPS'),
+                  const SizedBox(height: 12),
+                  ..._repped.map((e) {
+                    final key = e.reps!.settingKey;
+                    final reps = _repValues[key] ?? e.reps!.defaultReps;
+                    return _RepSettingTile(
+                      name: e.name,
+                      sets: e.sets,
+                      reps: reps,
+                      onChanged: (r) => _updateReps(key, r),
+                    );
+                  }),
+                ],
               ],
             ),
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  final String label;
+  const _SectionHeader(this.label);
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      label,
+      style: const TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w700,
+        color: AppColors.text,
+        letterSpacing: 0.5,
+      ),
+    );
+  }
+}
+
+class _RepSettingTile extends StatelessWidget {
+  final String name;
+  final int sets;
+  final int reps;
+  final ValueChanged<int> onChanged;
+
+  const _RepSettingTile({
+    required this.name,
+    required this.sets,
+    required this.reps,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.cardBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                name,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.text,
+                ),
+              ),
+              Text(
+                '$sets × $reps reps',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.accent,
+                ),
+              ),
+            ],
+          ),
+          Slider(
+            value: reps.toDouble(),
+            min: 5,
+            max: 50,
+            divisions: 45,
+            activeColor: AppColors.accent,
+            onChanged: (v) => onChanged(v.round()),
+          ),
+        ],
+      ),
     );
   }
 }

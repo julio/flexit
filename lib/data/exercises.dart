@@ -110,6 +110,7 @@ const dailyBlocks = <ExerciseBlock>[
         name: 'Push-Ups',
         duration: '3 × 20 reps',
         sets: 3,
+        reps: RepSpec(settingKey: 'push-ups', defaultReps: 20),
         description:
             'Hands shoulder-width, body in a straight line from head to heels. Lower chest to just above the floor, push back up. Rest 60–90 sec between sets.',
         cue: 'Brace the core and squeeze glutes — no sagging hips, no piked butt.',

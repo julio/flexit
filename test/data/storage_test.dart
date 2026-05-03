@@ -360,4 +360,23 @@ void main() {
       expect(await getTimerSeconds('hang', 60), 45);
     });
   });
+
+  group('rep settings', () {
+    test('returns default when no value saved', () async {
+      expect(await getRepsCount('push-ups', 20), 20);
+    });
+
+    test('saves and retrieves a rep count', () async {
+      await setRepsCount('push-ups', 25);
+      expect(await getRepsCount('push-ups', 20), 25);
+    });
+
+    test('rep settings are independent of timer settings with same key',
+        () async {
+      await setRepsCount('plank', 30);
+      await setTimerSeconds('plank', 60);
+      expect(await getRepsCount('plank', 0), 30);
+      expect(await getTimerSeconds('plank', 0), 60);
+    });
+  });
 }

@@ -23,6 +23,7 @@ class _TodayScreenState extends State<TodayScreen> {
   bool _loading = true;
   Set<String> _completedExercises = {};
   Map<String, int> _timerSeconds = {};
+  Map<String, int> _repCounts = {};
   DateTime? _startTime;
   Duration? _finalElapsed;
   Timer? _ticker;
@@ -46,11 +47,16 @@ class _TodayScreenState extends State<TodayScreen> {
     final completed = await getTodayCompletedExercises();
     final startTime = await getStartTime(today);
     final timers = <String, int>{};
+    final reps = <String, int>{};
     for (final e in dailyBlocks.expand((b) => b.exercises)) {
-      final spec = e.timer;
-      if (spec == null) continue;
-      timers[spec.settingKey] =
-          await getTimerSeconds(spec.settingKey, spec.defaultSeconds);
+      if (e.timer != null) {
+        timers[e.timer!.settingKey] =
+            await getTimerSeconds(e.timer!.settingKey, e.timer!.defaultSeconds);
+      }
+      if (e.reps != null) {
+        reps[e.reps!.settingKey] =
+            await getRepsCount(e.reps!.settingKey, e.reps!.defaultReps);
+      }
     }
 
     Duration? finalElapsed;
@@ -72,6 +78,7 @@ class _TodayScreenState extends State<TodayScreen> {
         _streak = getCurrentStreak(sessions);
         _completedExercises = completed;
         _timerSeconds = timers;
+        _repCounts = reps;
         _startTime = startTime;
         _finalElapsed = finalElapsed;
         _loading = false;
@@ -293,6 +300,7 @@ class _TodayScreenState extends State<TodayScreen> {
                   block: dailyBlocks[index],
                   completedExercises: _completedExercises,
                   timerSeconds: _timerSeconds,
+                  repCounts: _repCounts,
                   onToggle: _toggleExercise,
                 ),
                 childCount: dailyBlocks.length,
@@ -309,12 +317,14 @@ class _BlockCard extends StatelessWidget {
   final ExerciseBlock block;
   final Set<String> completedExercises;
   final Map<String, int> timerSeconds;
+  final Map<String, int> repCounts;
   final ValueChanged<String> onToggle;
 
   const _BlockCard({
     required this.block,
     required this.completedExercises,
     required this.timerSeconds,
+    required this.repCounts,
     required this.onToggle,
   });
 
@@ -367,6 +377,7 @@ class _BlockCard extends StatelessWidget {
                 exercise: e,
                 completedExercises: completedExercises,
                 timerSeconds: timerSeconds,
+                repCounts: repCounts,
                 onToggle: onToggle,
               )),
         ],
@@ -379,12 +390,14 @@ class _ExerciseCard extends StatelessWidget {
   final Exercise exercise;
   final Set<String> completedExercises;
   final Map<String, int> timerSeconds;
+  final Map<String, int> repCounts;
   final ValueChanged<String> onToggle;
 
   const _ExerciseCard({
     required this.exercise,
     required this.completedExercises,
     required this.timerSeconds,
+    required this.repCounts,
     required this.onToggle,
   });
 
@@ -397,6 +410,10 @@ class _ExerciseCard extends StatelessWidget {
     final timerDuration = timer == null
         ? 0
         : (timerSeconds[timer.settingKey] ?? timer.defaultSeconds);
+    final repsSpec = exercise.reps;
+    final durationLabel = repsSpec != null
+        ? '${exercise.sets} × ${repCounts[repsSpec.settingKey] ?? repsSpec.defaultReps} reps'
+        : exercise.duration;
 
     return GestureDetector(
       onTap: isMultiSet ? null : () => onToggle(exercise.id),
@@ -483,7 +500,7 @@ class _ExerciseCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    exercise.duration,
+                    durationLabel,
                     style: TextStyle(
                       fontSize: 13,
                       color: isDone

@@ -5,6 +5,7 @@ import '../models/session.dart';
 const _sessionsKey = 'flexit_sessions';
 const _exercisesPrefix = 'flexit_exercises_';
 const _timerPrefix = 'flexit_timer_';
+const _repsPrefix = 'flexit_reps_';
 const _startPrefix = 'flexit_start_';
 
 Future<List<Session>> getSessions() async {
@@ -95,6 +96,16 @@ Future<int> getTimerSeconds(String settingKey, int defaultSeconds) async {
 Future<void> setTimerSeconds(String settingKey, int seconds) async {
   final prefs = await SharedPreferences.getInstance();
   await prefs.setInt('$_timerPrefix$settingKey', seconds);
+}
+
+Future<int> getRepsCount(String settingKey, int defaultReps) async {
+  final prefs = await SharedPreferences.getInstance();
+  return prefs.getInt('$_repsPrefix$settingKey') ?? defaultReps;
+}
+
+Future<void> setRepsCount(String settingKey, int reps) async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setInt('$_repsPrefix$settingKey', reps);
 }
 
 String formatDate(DateTime d) {

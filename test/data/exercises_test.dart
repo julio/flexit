@@ -68,5 +68,14 @@ void main() {
       expect(plank.timer!.settingKey, 'plank');
       expect(plank.timer!.defaultSeconds, 60);
     });
+
+    test('push-ups has a 20-rep default rep spec', () {
+      final pushUps = dailyBlocks
+          .expand((b) => b.exercises)
+          .firstWhere((e) => e.id == 'push-ups');
+      expect(pushUps.reps, isNotNull);
+      expect(pushUps.reps!.settingKey, 'push-ups');
+      expect(pushUps.reps!.defaultReps, 20);
+    });
   });
 }
