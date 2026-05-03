@@ -7,7 +7,14 @@ class TimerSpec {
 class RepSpec {
   final String settingKey;
   final int defaultReps;
-  const RepSpec({required this.settingKey, required this.defaultReps});
+  final int minReps;
+  final int maxReps;
+  const RepSpec({
+    required this.settingKey,
+    required this.defaultReps,
+    this.minReps = 5,
+    this.maxReps = 50,
+  });
 }
 
 class Exercise {

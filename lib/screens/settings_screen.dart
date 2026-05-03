@@ -97,13 +97,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   const _SectionHeader('REPS'),
                   const SizedBox(height: 12),
                   ..._repped.map((e) {
-                    final key = e.reps!.settingKey;
-                    final reps = _repValues[key] ?? e.reps!.defaultReps;
+                    final spec = e.reps!;
+                    final reps = _repValues[spec.settingKey] ?? spec.defaultReps;
                     return _RepSettingTile(
                       name: e.name,
                       sets: e.sets,
                       reps: reps,
-                      onChanged: (r) => _updateReps(key, r),
+                      minReps: spec.minReps,
+                      maxReps: spec.maxReps,
+                      onChanged: (r) => _updateReps(spec.settingKey, r),
                     );
                   }),
                 ],
@@ -135,12 +137,16 @@ class _RepSettingTile extends StatelessWidget {
   final String name;
   final int sets;
   final int reps;
+  final int minReps;
+  final int maxReps;
   final ValueChanged<int> onChanged;
 
   const _RepSettingTile({
     required this.name,
     required this.sets,
     required this.reps,
+    required this.minReps,
+    required this.maxReps,
     required this.onChanged,
   });
 
@@ -179,10 +185,10 @@ class _RepSettingTile extends StatelessWidget {
             ],
           ),
           Slider(
-            value: reps.toDouble(),
-            min: 5,
-            max: 50,
-            divisions: 45,
+            value: reps.clamp(minReps, maxReps).toDouble(),
+            min: minReps.toDouble(),
+            max: maxReps.toDouble(),
+            divisions: maxReps - minReps,
             activeColor: AppColors.accent,
             onChanged: (v) => onChanged(v.round()),
           ),

@@ -90,6 +90,16 @@ void main() {
       expect(pullUps.reps, isNotNull);
       expect(pullUps.reps!.settingKey, 'pull-ups');
       expect(pullUps.reps!.defaultReps, 5);
+      expect(pullUps.reps!.minReps, 1);
+      expect(pullUps.reps!.maxReps, 15);
+    });
+
+    test('push-ups uses default rep bounds (5–50)', () {
+      final pushUps = dailyBlocks
+          .expand((b) => b.exercises)
+          .firstWhere((e) => e.id == 'push-ups');
+      expect(pushUps.reps!.minReps, 5);
+      expect(pushUps.reps!.maxReps, 50);
     });
   });
 }

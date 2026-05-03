@@ -130,7 +130,11 @@ const dailyBlocks = <ExerciseBlock>[
         name: 'Pull-Ups',
         duration: '3 × 5 reps',
         sets: 3,
-        reps: RepSpec(settingKey: 'pull-ups', defaultReps: 5),
+        reps: RepSpec(
+            settingKey: 'pull-ups',
+            defaultReps: 5,
+            minReps: 1,
+            maxReps: 15),
         description:
             'Overhand grip, shoulder-width. Pull until chin clears the bar, lower with control to a full hang. Rest 90–120 sec between sets.',
         cue: 'Lead with the elbows pulling down. Full hang at the bottom for the lat stretch.',
