@@ -93,8 +93,8 @@ const dailyBlocks = <ExerciseBlock>[
   ),
   ExerciseBlock(
     id: 'block4',
-    title: 'Strengthen + Decompress',
-    duration: '3 min',
+    title: 'Strength',
+    duration: '10 min',
     exercises: [
       Exercise(
         id: 'glute-bridge',
@@ -105,6 +105,29 @@ const dailyBlocks = <ExerciseBlock>[
         cue: 'When glutes are weak, your lower back compensates. Fix that here.',
         videoUrl: 'https://www.youtube.com/shorts/LORVjN2bg5o',
       ),
+      Exercise(
+        id: 'push-ups',
+        name: 'Push-Ups',
+        duration: '3 × 20 reps',
+        description:
+            'Hands shoulder-width, body in a straight line from head to heels. Lower chest to just above the floor, push back up. Rest 60–90 sec between sets.',
+        cue: 'Brace the core and squeeze glutes — no sagging hips, no piked butt.',
+      ),
+      Exercise(
+        id: 'plank',
+        name: 'Plank',
+        duration: '3 × 1 min',
+        description:
+            'Forearms on the floor, elbows under shoulders, body in a straight line from head to heels. Hold 1 min. Rest 30–45 sec between sets.',
+        cue: 'Squeeze glutes and pull belly button toward spine — straight line, no sagging.',
+      ),
+    ],
+  ),
+  ExerciseBlock(
+    id: 'block5',
+    title: 'Decompress',
+    duration: '1 min',
+    exercises: [
       Exercise(
         id: 'dead-hang',
         name: 'Dead Hang',

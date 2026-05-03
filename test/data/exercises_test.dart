@@ -3,8 +3,8 @@ import 'package:flexit/data/exercises.dart';
 
 void main() {
   group('dailyBlocks', () {
-    test('has 5 blocks', () {
-      expect(dailyBlocks.length, 5);
+    test('has 6 blocks', () {
+      expect(dailyBlocks.length, 6);
     });
 
     test('activate block has 1 exercise', () {
@@ -33,10 +33,10 @@ void main() {
       }
     });
 
-    test('total daily exercises is 9', () {
+    test('total daily exercises is 11', () {
       final total =
           dailyBlocks.fold<int>(0, (sum, b) => sum + b.exercises.length);
-      expect(total, 9);
+      expect(total, 11);
     });
   });
 }
