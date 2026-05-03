@@ -316,6 +316,33 @@ void main() {
     });
   });
 
+  group('start time', () {
+    test('returns null when not set', () async {
+      expect(await getStartTime('2026-05-03'), isNull);
+    });
+
+    test('saves and retrieves a start time', () async {
+      final t = DateTime(2026, 5, 3, 10, 14);
+      await setStartTime('2026-05-03', t);
+      expect(await getStartTime('2026-05-03'), t);
+    });
+
+    test('clears a start time', () async {
+      await setStartTime('2026-05-03', DateTime(2026, 5, 3, 10, 14));
+      await clearStartTime('2026-05-03');
+      expect(await getStartTime('2026-05-03'), isNull);
+    });
+
+    test('different dates store independent start times', () async {
+      final a = DateTime(2026, 5, 1, 9, 0);
+      final b = DateTime(2026, 5, 2, 17, 30);
+      await setStartTime('2026-05-01', a);
+      await setStartTime('2026-05-02', b);
+      expect(await getStartTime('2026-05-01'), a);
+      expect(await getStartTime('2026-05-02'), b);
+    });
+  });
+
   group('timer settings', () {
     test('returns default when no value saved', () async {
       expect(await getTimerSeconds('plank', 60), 60);

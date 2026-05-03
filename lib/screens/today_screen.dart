@@ -23,6 +23,9 @@ class _TodayScreenState extends State<TodayScreen> {
   bool _loading = true;
   Set<String> _completedExercises = {};
   Map<String, int> _timerSeconds = {};
+  DateTime? _startTime;
+  Duration? _finalElapsed;
+  Timer? _ticker;
 
   @override
   void initState() {
@@ -30,10 +33,18 @@ class _TodayScreenState extends State<TodayScreen> {
     _loadState();
   }
 
+  @override
+  void dispose() {
+    _ticker?.cancel();
+    super.dispose();
+  }
+
   Future<void> _loadState() async {
+    final today = formatDate(DateTime.now());
     final done = await isTodayComplete();
     final sessions = await getSessions();
     final completed = await getTodayCompletedExercises();
+    final startTime = await getStartTime(today);
     final timers = <String, int>{};
     for (final e in dailyBlocks.expand((b) => b.exercises)) {
       final spec = e.timer;
@@ -41,15 +52,50 @@ class _TodayScreenState extends State<TodayScreen> {
       timers[spec.settingKey] =
           await getTimerSeconds(spec.settingKey, spec.defaultSeconds);
     }
+
+    Duration? finalElapsed;
+    if (done) {
+      final session =
+          sessions.where((s) => s.date == today).firstOrNull;
+      if (session != null && session.startedAt != null) {
+        final start = DateTime.tryParse(session.startedAt!);
+        final end = DateTime.tryParse(session.completedAt);
+        if (start != null && end != null) {
+          finalElapsed = end.difference(start);
+        }
+      }
+    }
+
     if (mounted) {
       setState(() {
         _done = done;
         _streak = getCurrentStreak(sessions);
         _completedExercises = completed;
         _timerSeconds = timers;
+        _startTime = startTime;
+        _finalElapsed = finalElapsed;
         _loading = false;
       });
+      _updateTicker();
     }
+  }
+
+  void _updateTicker() {
+    _ticker?.cancel();
+    if (_startTime != null && !_done) {
+      _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (mounted) setState(() {});
+      });
+    }
+  }
+
+  Future<void> _start() async {
+    final now = DateTime.now();
+    await setStartTime(formatDate(now), now);
+    if (!mounted) return;
+    setState(() => _startTime = now);
+    _updateTicker();
+    HapticFeedback.mediumImpact();
   }
 
   Future<void> _openSettings() async {
@@ -79,11 +125,13 @@ class _TodayScreenState extends State<TodayScreen> {
     final allDone = allIds.difference(updated).isEmpty;
 
     if (allDone && !_done) {
-      final today = formatDate(DateTime.now());
+      final now = DateTime.now();
+      final today = formatDate(now);
       await saveSession(Session(
         date: today,
-        completedAt: DateTime.now().toIso8601String(),
+        completedAt: now.toIso8601String(),
         type: 'daily',
+        startedAt: _startTime?.toIso8601String(),
       ));
       HapticFeedback.heavyImpact();
       await _loadState();
@@ -195,6 +243,15 @@ class _TodayScreenState extends State<TodayScreen> {
                 ),
               ),
             ),
+          if (!_done)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                child: _startTime == null
+                    ? _StartButton(onPressed: _start)
+                    : _RunningClock(startTime: _startTime!),
+              ),
+            ),
           if (_done)
             SliverToBoxAdapter(
               child: Padding(
@@ -207,14 +264,17 @@ class _TodayScreenState extends State<TodayScreen> {
                     border: Border.all(
                         color: AppColors.success.withValues(alpha: 0.25)),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.check_circle, color: AppColors.success, size: 18),
-                      SizedBox(width: 8),
+                      const Icon(Icons.check_circle,
+                          color: AppColors.success, size: 18),
+                      const SizedBox(width: 8),
                       Text(
-                        "All done for today",
-                        style: TextStyle(
+                        _finalElapsed != null
+                            ? 'Done in ${_formatElapsed(_finalElapsed!)}'
+                            : 'All done for today',
+                        style: const TextStyle(
                           color: AppColors.success,
                           fontWeight: FontWeight.w700,
                           fontSize: 15,
@@ -479,6 +539,81 @@ class _ExerciseCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+String _formatElapsed(Duration d) {
+  final m = d.inMinutes;
+  final s = d.inSeconds % 60;
+  return '$m:${s.toString().padLeft(2, '0')}';
+}
+
+class _StartButton extends StatelessWidget {
+  final VoidCallback onPressed;
+  const _StartButton({required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onPressed,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.accent,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.play_arrow, color: Colors.white, size: 22),
+            SizedBox(width: 6),
+            Text(
+              'Start',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+                fontSize: 16,
+                letterSpacing: 0.3,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RunningClock extends StatelessWidget {
+  final DateTime startTime;
+  const _RunningClock({required this.startTime});
+
+  @override
+  Widget build(BuildContext context) {
+    final elapsed = DateTime.now().difference(startTime);
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.accentDim,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.accent.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.timer_outlined, color: AppColors.accent, size: 18),
+          const SizedBox(width: 8),
+          Text(
+            _formatElapsed(elapsed),
+            style: const TextStyle(
+              color: AppColors.accent,
+              fontWeight: FontWeight.w800,
+              fontSize: 16,
+              fontFeatures: [FontFeature.tabularFigures()],
+            ),
+          ),
+        ],
       ),
     );
   }

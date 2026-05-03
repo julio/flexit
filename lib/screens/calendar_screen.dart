@@ -274,7 +274,7 @@ class CalendarScreenState extends State<CalendarScreen> {
           dateStr.compareTo(firstSessionDate) >= 0;
 
       var isPartial = false;
-      if (isMissed) {
+      if ((isMissed || isToday) && !isCompleted) {
         final done = _exercisesByDate[dateStr]?.length ?? 0;
         final total = dailyBlocks
             .expand((b) => b.exercises)

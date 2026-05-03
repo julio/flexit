@@ -38,5 +38,27 @@ void main() {
       expect(restored.completedAt, original.completedAt);
       expect(restored.type, original.type);
     });
+
+    test('startedAt round-trips when set', () {
+      const original = Session(
+        date: '2026-04-10',
+        completedAt: '2026-04-10T10:30:00.000',
+        type: 'daily',
+        startedAt: '2026-04-10T10:14:00.000',
+      );
+      final restored = Session.fromJson(original.toJson());
+      expect(restored.startedAt, '2026-04-10T10:14:00.000');
+    });
+
+    test('startedAt is null when omitted (backward compatible)', () {
+      final json = {
+        'date': '2026-04-10',
+        'completedAt': '2026-04-10T10:30:00.000',
+        'type': 'daily',
+      };
+      final session = Session.fromJson(json);
+      expect(session.startedAt, isNull);
+      expect(session.toJson().containsKey('startedAt'), isFalse);
+    });
   });
 }
