@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -6,6 +8,7 @@ import '../data/storage.dart';
 import '../models/exercise.dart';
 import '../models/session.dart';
 import '../theme.dart';
+import 'settings_screen.dart';
 
 class TodayScreen extends StatefulWidget {
   const TodayScreen({super.key});
@@ -19,6 +22,7 @@ class _TodayScreenState extends State<TodayScreen> {
   int _streak = 0;
   bool _loading = true;
   Set<String> _completedExercises = {};
+  Map<String, int> _timerSeconds = {};
 
   @override
   void initState() {
@@ -30,14 +34,29 @@ class _TodayScreenState extends State<TodayScreen> {
     final done = await isTodayComplete();
     final sessions = await getSessions();
     final completed = await getTodayCompletedExercises();
+    final timers = <String, int>{};
+    for (final e in dailyBlocks.expand((b) => b.exercises)) {
+      final spec = e.timer;
+      if (spec == null) continue;
+      timers[spec.settingKey] =
+          await getTimerSeconds(spec.settingKey, spec.defaultSeconds);
+    }
     if (mounted) {
       setState(() {
         _done = done;
         _streak = getCurrentStreak(sessions);
         _completedExercises = completed;
+        _timerSeconds = timers;
         _loading = false;
       });
     }
+  }
+
+  Future<void> _openSettings() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const SettingsScreen()),
+    );
+    await _loadState();
   }
 
   Future<void> _toggleExercise(String atomicId) async {
@@ -95,6 +114,14 @@ class _TodayScreenState extends State<TodayScreen> {
           SliverAppBar(
             pinned: true,
             expandedHeight: _streak > 0 ? 140 : 120,
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.settings_outlined,
+                    color: AppColors.textSecondary),
+                onPressed: _openSettings,
+                tooltip: 'Settings',
+              ),
+            ],
             flexibleSpace: FlexibleSpaceBar(
               background: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 60, 20, 0),
@@ -205,6 +232,7 @@ class _TodayScreenState extends State<TodayScreen> {
                 (context, index) => _BlockCard(
                   block: dailyBlocks[index],
                   completedExercises: _completedExercises,
+                  timerSeconds: _timerSeconds,
                   onToggle: _toggleExercise,
                 ),
                 childCount: dailyBlocks.length,
@@ -220,11 +248,13 @@ class _TodayScreenState extends State<TodayScreen> {
 class _BlockCard extends StatelessWidget {
   final ExerciseBlock block;
   final Set<String> completedExercises;
+  final Map<String, int> timerSeconds;
   final ValueChanged<String> onToggle;
 
   const _BlockCard({
     required this.block,
     required this.completedExercises,
+    required this.timerSeconds,
     required this.onToggle,
   });
 
@@ -276,6 +306,7 @@ class _BlockCard extends StatelessWidget {
           ...block.exercises.map((e) => _ExerciseCard(
                 exercise: e,
                 completedExercises: completedExercises,
+                timerSeconds: timerSeconds,
                 onToggle: onToggle,
               )),
         ],
@@ -287,11 +318,13 @@ class _BlockCard extends StatelessWidget {
 class _ExerciseCard extends StatelessWidget {
   final Exercise exercise;
   final Set<String> completedExercises;
+  final Map<String, int> timerSeconds;
   final ValueChanged<String> onToggle;
 
   const _ExerciseCard({
     required this.exercise,
     required this.completedExercises,
+    required this.timerSeconds,
     required this.onToggle,
   });
 
@@ -300,6 +333,10 @@ class _ExerciseCard extends StatelessWidget {
     final atomicIds = exercise.atomicIds;
     final isDone = atomicIds.every(completedExercises.contains);
     final isMultiSet = exercise.sets > 1;
+    final timer = exercise.timer;
+    final timerDuration = timer == null
+        ? 0
+        : (timerSeconds[timer.settingKey] ?? timer.defaultSeconds);
 
     return GestureDetector(
       onTap: isMultiSet ? null : () => onToggle(exercise.id),
@@ -327,12 +364,24 @@ class _ExerciseCard extends StatelessWidget {
                       children: [
                         for (var i = 0; i < atomicIds.length; i++) ...[
                           if (i > 0) const SizedBox(height: 6),
-                          _SetCheckbox(
-                            label: '${i + 1}',
-                            isDone:
-                                completedExercises.contains(atomicIds[i]),
-                            onTap: () => onToggle(atomicIds[i]),
-                          ),
+                          if (timer != null)
+                            _TimerSetButton(
+                              key: ValueKey(
+                                  '${atomicIds[i]}@$timerDuration'),
+                              label: '${i + 1}',
+                              durationSeconds: timerDuration,
+                              isDone:
+                                  completedExercises.contains(atomicIds[i]),
+                              onComplete: () => onToggle(atomicIds[i]),
+                              onUndo: () => onToggle(atomicIds[i]),
+                            )
+                          else
+                            _SetCheckbox(
+                              label: '${i + 1}',
+                              isDone:
+                                  completedExercises.contains(atomicIds[i]),
+                              onTap: () => onToggle(atomicIds[i]),
+                            ),
                         ],
                       ],
                     )
@@ -427,6 +476,154 @@ class _ExerciseCard extends StatelessWidget {
                   ],
                 ],
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TimerSetButton extends StatefulWidget {
+  final String label;
+  final int durationSeconds;
+  final bool isDone;
+  final VoidCallback onComplete;
+  final VoidCallback onUndo;
+
+  const _TimerSetButton({
+    super.key,
+    required this.label,
+    required this.durationSeconds,
+    required this.isDone,
+    required this.onComplete,
+    required this.onUndo,
+  });
+
+  @override
+  State<_TimerSetButton> createState() => _TimerSetButtonState();
+}
+
+class _TimerSetButtonState extends State<_TimerSetButton> {
+  Timer? _ticker;
+  int _remaining = 0;
+  bool _running = false;
+
+  @override
+  void dispose() {
+    _ticker?.cancel();
+    super.dispose();
+  }
+
+  void _start() {
+    setState(() {
+      _running = true;
+      _remaining = widget.durationSeconds;
+    });
+    HapticFeedback.lightImpact();
+    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      setState(() => _remaining -= 1);
+      if (_remaining <= 0) {
+        _ticker?.cancel();
+        setState(() => _running = false);
+        HapticFeedback.heavyImpact();
+        widget.onComplete();
+      }
+    });
+  }
+
+  void _cancel() {
+    _ticker?.cancel();
+    setState(() {
+      _running = false;
+      _remaining = 0;
+    });
+  }
+
+  void _handleTap() {
+    if (widget.isDone) {
+      widget.onUndo();
+      return;
+    }
+    if (_running) {
+      _cancel();
+      return;
+    }
+    _start();
+  }
+
+  String _formatRemaining(int s) {
+    if (s >= 60) {
+      final m = s ~/ 60;
+      final r = s % 60;
+      return '$m:${r.toString().padLeft(2, '0')}';
+    }
+    return '${s}s';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDone = widget.isDone;
+    final showRunning = _running && !isDone;
+    final progress = showRunning && widget.durationSeconds > 0
+        ? 1.0 - (_remaining / widget.durationSeconds)
+        : (isDone ? 1.0 : 0.0);
+
+    return GestureDetector(
+      onTap: _handleTap,
+      child: SizedBox(
+        width: 48,
+        height: 24,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            if (showRunning)
+              Positioned.fill(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(7),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    backgroundColor: AppColors.cardBorder,
+                    color: AppColors.accent.withValues(alpha: 0.4),
+                  ),
+                ),
+              ),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 48,
+              height: 24,
+              decoration: BoxDecoration(
+                color: isDone
+                    ? AppColors.success
+                    : showRunning
+                        ? Colors.transparent
+                        : Colors.transparent,
+                borderRadius: BorderRadius.circular(7),
+                border: Border.all(
+                  color: isDone
+                      ? AppColors.success
+                      : showRunning
+                          ? AppColors.accent
+                          : AppColors.textMuted,
+                  width: 2,
+                ),
+              ),
+              alignment: Alignment.center,
+              child: isDone
+                  ? const Icon(Icons.check, color: Colors.white, size: 14)
+                  : Text(
+                      showRunning
+                          ? _formatRemaining(_remaining)
+                          : widget.label,
+                      style: TextStyle(
+                        fontSize: showRunning ? 11 : 12,
+                        fontWeight: FontWeight.w700,
+                        color: showRunning
+                            ? AppColors.accent
+                            : AppColors.textMuted,
+                      ),
+                    ),
             ),
           ],
         ),

@@ -59,5 +59,14 @@ void main() {
         }
       }
     });
+
+    test('plank has a 60-second default timer', () {
+      final plank = dailyBlocks
+          .expand((b) => b.exercises)
+          .firstWhere((e) => e.id == 'plank');
+      expect(plank.timer, isNotNull);
+      expect(plank.timer!.settingKey, 'plank');
+      expect(plank.timer!.defaultSeconds, 60);
+    });
   });
 }

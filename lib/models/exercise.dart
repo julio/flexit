@@ -1,3 +1,9 @@
+class TimerSpec {
+  final String settingKey;
+  final int defaultSeconds;
+  const TimerSpec({required this.settingKey, required this.defaultSeconds});
+}
+
 class Exercise {
   final String id;
   final String name;
@@ -6,6 +12,7 @@ class Exercise {
   final String cue;
   final String? videoUrl;
   final int sets;
+  final TimerSpec? timer;
 
   const Exercise({
     required this.id,
@@ -15,6 +22,7 @@ class Exercise {
     required this.cue,
     this.videoUrl,
     this.sets = 1,
+    this.timer,
   });
 
   List<String> get atomicIds {

@@ -4,6 +4,7 @@ import '../models/session.dart';
 
 const _sessionsKey = 'flexit_sessions';
 const _exercisesPrefix = 'flexit_exercises_';
+const _timerPrefix = 'flexit_timer_';
 
 Future<List<Session>> getSessions() async {
   final prefs = await SharedPreferences.getInstance();
@@ -66,6 +67,16 @@ Future<void> saveCompletedExercises(
 
 Future<void> saveTodayCompletedExercises(Set<String> exerciseIds) async {
   await saveCompletedExercises(formatDate(DateTime.now()), exerciseIds);
+}
+
+Future<int> getTimerSeconds(String settingKey, int defaultSeconds) async {
+  final prefs = await SharedPreferences.getInstance();
+  return prefs.getInt('$_timerPrefix$settingKey') ?? defaultSeconds;
+}
+
+Future<void> setTimerSeconds(String settingKey, int seconds) async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setInt('$_timerPrefix$settingKey', seconds);
 }
 
 String formatDate(DateTime d) {

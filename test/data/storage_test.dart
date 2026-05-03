@@ -315,4 +315,22 @@ void main() {
       expect(all.keys, {'2026-04-10'});
     });
   });
+
+  group('timer settings', () {
+    test('returns default when no value saved', () async {
+      expect(await getTimerSeconds('plank', 60), 60);
+    });
+
+    test('saves and retrieves a timer setting', () async {
+      await setTimerSeconds('plank', 90);
+      expect(await getTimerSeconds('plank', 60), 90);
+    });
+
+    test('different keys store independent values', () async {
+      await setTimerSeconds('plank', 120);
+      await setTimerSeconds('hang', 45);
+      expect(await getTimerSeconds('plank', 60), 120);
+      expect(await getTimerSeconds('hang', 60), 45);
+    });
+  });
 }
