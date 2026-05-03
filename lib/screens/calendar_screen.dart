@@ -275,10 +275,13 @@ class CalendarScreenState extends State<CalendarScreen> {
 
       var isPartial = false;
       if ((isMissed || isToday) && !isCompleted) {
-        final done = _exercisesByDate[dateStr]?.length ?? 0;
-        final total = dailyBlocks
+        final validAtomicIds = dailyBlocks
             .expand((b) => b.exercises)
-            .fold<int>(0, (sum, e) => sum + e.sets);
+            .expand((e) => e.atomicIds)
+            .toSet();
+        final saved = _exercisesByDate[dateStr] ?? <String>{};
+        final done = saved.intersection(validAtomicIds).length;
+        final total = validAtomicIds.length;
         isPartial = total > 0 && done * 2 >= total;
       }
 

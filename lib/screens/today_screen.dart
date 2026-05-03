@@ -151,10 +151,17 @@ class _TodayScreenState extends State<TodayScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final totalExercises = dailyBlocks
+    final validAtomicIds = dailyBlocks
         .expand((b) => b.exercises)
-        .fold<int>(0, (sum, e) => sum + e.sets);
-    final completedCount = _completedExercises.length;
+        .expand((e) => e.atomicIds)
+        .toSet();
+    final totalExercises = validAtomicIds.length;
+    final completedCount =
+        _completedExercises.intersection(validAtomicIds).length;
+    final estimatedMinutes = dailyBlocks.fold<int>(0, (sum, b) {
+      final n = int.tryParse(b.duration.split(' ').first) ?? 0;
+      return sum + n;
+    });
 
     if (_loading) {
       return const Scaffold(
@@ -201,9 +208,9 @@ class _TodayScreenState extends State<TodayScreen> {
                             color: AppColors.textSecondary,
                           ),
                         ),
-                        const Text(
-                          ' \u00b7 ~15 min',
-                          style: TextStyle(
+                        Text(
+                          ' \u00b7 ~$estimatedMinutes min',
+                          style: const TextStyle(
                             fontSize: 15,
                             color: AppColors.textSecondary,
                           ),
