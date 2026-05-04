@@ -75,6 +75,8 @@ const dailyBlocks = <ExerciseBlock>[
         id: 'couch-stretch',
         name: 'Couch Stretch',
         duration: '90 sec per side',
+        sets: 2,
+        timer: TimerSpec(settingKey: 'couch-stretch', defaultSeconds: 90),
         description:
             'Kneel facing away from couch. Back foot on seat. Step front foot forward. Squeeze glute, drive hips forward.',
         cue: "Stay tall — don't lean forward. Squeeze the glute on the back leg.",

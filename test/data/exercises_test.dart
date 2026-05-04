@@ -69,6 +69,17 @@ void main() {
       expect(plank.timer!.defaultSeconds, 60);
     });
 
+    test('couch stretch has 2 sets with a 90-second default timer', () {
+      final couch = dailyBlocks
+          .expand((b) => b.exercises)
+          .firstWhere((e) => e.id == 'couch-stretch');
+      expect(couch.sets, 2);
+      expect(couch.timer, isNotNull);
+      expect(couch.timer!.settingKey, 'couch-stretch');
+      expect(couch.timer!.defaultSeconds, 90);
+      expect(couch.atomicIds, ['couch-stretch:1', 'couch-stretch:2']);
+    });
+
     test('push-ups has a 20-rep default rep spec', () {
       final pushUps = dailyBlocks
           .expand((b) => b.exercises)
