@@ -80,6 +80,16 @@ void main() {
       expect(couch.atomicIds, ['couch-stretch:1', 'couch-stretch:2']);
     });
 
+    test('pigeon pose has 2 sets with a 90-second default timer', () {
+      final pigeon = dailyBlocks
+          .expand((b) => b.exercises)
+          .firstWhere((e) => e.id == 'pigeon');
+      expect(pigeon.sets, 2);
+      expect(pigeon.timer, isNotNull);
+      expect(pigeon.timer!.settingKey, 'pigeon');
+      expect(pigeon.timer!.defaultSeconds, 90);
+    });
+
     test('push-ups has a 20-rep default rep spec', () {
       final pushUps = dailyBlocks
           .expand((b) => b.exercises)

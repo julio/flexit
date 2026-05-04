@@ -86,6 +86,8 @@ const dailyBlocks = <ExerciseBlock>[
         id: 'pigeon',
         name: 'Pigeon Pose',
         duration: '90 sec per side',
+        sets: 2,
+        timer: TimerSpec(settingKey: 'pigeon', defaultSeconds: 90),
         description:
             'From all fours, slide knee forward toward wrist. Extend back leg straight behind. Walk hands forward and lower torso.',
         cue: 'Breathe and relax into it. Opens deep external hip rotators.',
