@@ -212,9 +212,13 @@ class CalendarScreenState extends State<CalendarScreen> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            s.type == 'weekend'
-                                ? 'Weekend deep session'
-                                : 'Daily 15',
+                            [
+                              s.type == 'weekend'
+                                  ? 'Weekend deep session'
+                                  : 'Daily 15',
+                              if (s.duration != null)
+                                _formatDuration(s.duration!),
+                            ].join(' · '),
                             style: const TextStyle(
                               color: AppColors.textSecondary,
                               fontSize: 12,
@@ -386,7 +390,14 @@ class CalendarScreenState extends State<CalendarScreen> {
           const SizedBox(height: 4),
           if (selectedSession != null)
             Text(
-              'Completed at ${_formatTime(selectedSession.completedAt)} · ${selectedSession.type == 'weekend' ? 'Weekend deep session' : 'Daily 15'}',
+              [
+                'Completed at ${_formatTime(selectedSession.completedAt)}',
+                selectedSession.type == 'weekend'
+                    ? 'Weekend deep session'
+                    : 'Daily 15',
+                if (selectedSession.duration != null)
+                  'took ${_formatDuration(selectedSession.duration!)}',
+              ].join(' · '),
               style: const TextStyle(color: AppColors.success, fontSize: 13),
             )
           else if (isToday)
@@ -491,6 +502,14 @@ class CalendarScreenState extends State<CalendarScreen> {
     final hour = d.hour % 12 == 0 ? 12 : d.hour % 12;
     final period = d.hour < 12 ? 'AM' : 'PM';
     return '$hour:${d.minute.toString().padLeft(2, '0')} $period';
+  }
+
+  String _formatDuration(Duration d) {
+    final m = d.inMinutes;
+    final s = d.inSeconds % 60;
+    if (m == 0) return '${s}s';
+    if (s == 0) return '${m}m';
+    return '${m}m ${s}s';
   }
 }
 

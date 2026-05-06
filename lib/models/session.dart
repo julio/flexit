@@ -24,4 +24,13 @@ class Session {
         type: json['type'] as String,
         startedAt: json['startedAt'] as String?,
       );
+
+  Duration? get duration {
+    if (startedAt == null) return null;
+    final start = DateTime.tryParse(startedAt!);
+    final end = DateTime.tryParse(completedAt);
+    if (start == null || end == null) return null;
+    final diff = end.difference(start);
+    return diff.isNegative ? null : diff;
+  }
 }

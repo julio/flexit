@@ -60,5 +60,34 @@ void main() {
       expect(session.startedAt, isNull);
       expect(session.toJson().containsKey('startedAt'), isFalse);
     });
+
+    test('duration is computed from startedAt and completedAt', () {
+      const session = Session(
+        date: '2026-04-10',
+        startedAt: '2026-04-10T10:14:00.000',
+        completedAt: '2026-04-10T10:30:30.000',
+        type: 'daily',
+      );
+      expect(session.duration, const Duration(minutes: 16, seconds: 30));
+    });
+
+    test('duration is null when startedAt missing', () {
+      const session = Session(
+        date: '2026-04-10',
+        completedAt: '2026-04-10T10:30:00.000',
+        type: 'daily',
+      );
+      expect(session.duration, isNull);
+    });
+
+    test('duration is null when timestamps are out of order', () {
+      const session = Session(
+        date: '2026-04-10',
+        startedAt: '2026-04-10T10:30:00.000',
+        completedAt: '2026-04-10T10:14:00.000',
+        type: 'daily',
+      );
+      expect(session.duration, isNull);
+    });
   });
 }

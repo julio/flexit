@@ -63,13 +63,7 @@ class _TodayScreenState extends State<TodayScreen> {
     if (done) {
       final session =
           sessions.where((s) => s.date == today).firstOrNull;
-      if (session != null && session.startedAt != null) {
-        final start = DateTime.tryParse(session.startedAt!);
-        final end = DateTime.tryParse(session.completedAt);
-        if (start != null && end != null) {
-          finalElapsed = end.difference(start);
-        }
-      }
+      finalElapsed = session?.duration;
     }
 
     if (mounted) {
