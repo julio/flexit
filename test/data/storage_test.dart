@@ -379,4 +379,55 @@ void main() {
       expect(await getTimerSeconds('plank', 0), 60);
     });
   });
+
+  group('p ratings', () {
+    test('returns null when no rating saved', () async {
+      expect(await getPRating('2026-04-10'), isNull);
+    });
+
+    test('saves and retrieves a rating', () async {
+      await setPRating('2026-04-10', 2);
+      expect(await getPRating('2026-04-10'), 2);
+    });
+
+    test('overwrites previous rating for same date', () async {
+      await setPRating('2026-04-10', 2);
+      await setPRating('2026-04-10', -1);
+      expect(await getPRating('2026-04-10'), -1);
+    });
+
+    test('different dates store independent ratings', () async {
+      await setPRating('2026-04-10', 2);
+      await setPRating('2026-04-11', -2);
+      expect(await getPRating('2026-04-10'), 2);
+      expect(await getPRating('2026-04-11'), -2);
+    });
+
+    test('getAllPRatings returns empty when nothing saved', () async {
+      expect(await getAllPRatings(), isEmpty);
+    });
+
+    test('getAllPRatings returns map keyed by date', () async {
+      await setPRating('2026-04-10', 2);
+      await setPRating('2026-04-11', 0);
+      await setPRating('2026-04-12', -2);
+      final all = await getAllPRatings();
+      expect(all, {
+        '2026-04-10': 2,
+        '2026-04-11': 0,
+        '2026-04-12': -2,
+      });
+    });
+
+    test('getAllPRatings ignores unrelated SharedPreferences keys', () async {
+      SharedPreferences.setMockInitialValues({
+        'flexit_p_2026-04-10': 1,
+        'flexit_timer_plank': 60,
+        'flexit_reps_pushups': 20,
+        'unrelated': 99,
+      });
+      final all = await getAllPRatings();
+      expect(all, {'2026-04-10': 1});
+    });
+  });
 }

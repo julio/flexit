@@ -27,6 +27,7 @@ class _TodayScreenState extends State<TodayScreen> {
   DateTime? _startTime;
   Duration? _finalElapsed;
   Timer? _ticker;
+  int? _pRating;
 
   @override
   void initState() {
@@ -46,6 +47,7 @@ class _TodayScreenState extends State<TodayScreen> {
     final sessions = await getSessions();
     final completed = await getTodayCompletedExercises();
     final startTime = await getStartTime(today);
+    final pRating = await getPRating(today);
     final timers = <String, int>{};
     final reps = <String, int>{};
     for (final e in dailyBlocks.expand((b) => b.exercises)) {
@@ -75,10 +77,18 @@ class _TodayScreenState extends State<TodayScreen> {
         _repCounts = reps;
         _startTime = startTime;
         _finalElapsed = finalElapsed;
+        _pRating = pRating;
         _loading = false;
       });
       _updateTicker();
     }
+  }
+
+  Future<void> _setPRating(int value) async {
+    final today = formatDate(DateTime.now());
+    await setPRating(today, value);
+    HapticFeedback.lightImpact();
+    if (mounted) setState(() => _pRating = value);
   }
 
   void _updateTicker() {
@@ -293,6 +303,15 @@ class _TodayScreenState extends State<TodayScreen> {
                 ),
               ),
             ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+              child: _PRatingCard(
+                value: _pRating,
+                onSelect: _setPRating,
+              ),
+            ),
+          ),
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
             sliver: SliverList(
@@ -823,6 +842,116 @@ class _SetCheckbox extends StatelessWidget {
                   color: AppColors.textMuted,
                 ),
               ),
+      ),
+    );
+  }
+}
+
+class _PRatingCard extends StatelessWidget {
+  final int? value;
+  final ValueChanged<int> onSelect;
+
+  const _PRatingCard({required this.value, required this.onSelect});
+
+  static const _options = [2, 1, 0, -1, -2];
+  static const _labels = {
+    2: 'excellent',
+    1: 'good',
+    0: 'ok',
+    -1: 'bad',
+    -2: 'horrible',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.cardBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'How was p today?',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.text,
+                ),
+              ),
+              if (value != null)
+                Text(
+                  _labels[value]!,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              for (final v in _options) ...[
+                if (v != _options.first) const SizedBox(width: 6),
+                Expanded(
+                  child: _PRatingButton(
+                    value: v,
+                    selected: value == v,
+                    onTap: () => onSelect(v),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PRatingButton extends StatelessWidget {
+  final int value;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _PRatingButton({
+    required this.value,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = AppColors.pColor(value);
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        height: 38,
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: selected ? AppColors.text : Colors.transparent,
+            width: 2,
+          ),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          value > 0 ? '+$value' : '$value',
+          style: const TextStyle(
+            color: Colors.black87,
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
       ),
     );
   }

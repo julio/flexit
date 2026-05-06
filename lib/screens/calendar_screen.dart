@@ -14,6 +14,7 @@ class CalendarScreen extends StatefulWidget {
 class CalendarScreenState extends State<CalendarScreen> {
   List<Session> _sessions = [];
   Map<String, Set<String>> _exercisesByDate = {};
+  Map<String, int> _pRatings = {};
   DateTime _focusedMonth = DateTime.now();
   String? _selectedDate;
   Set<String> _selectedDateExercises = {};
@@ -27,10 +28,12 @@ class CalendarScreenState extends State<CalendarScreen> {
   Future<void> _loadSessions() async {
     final sessions = await getSessions();
     final exercisesByDate = await getAllCompletedExercises();
+    final pRatings = await getAllPRatings();
     if (mounted) {
       setState(() {
         _sessions = sessions;
         _exercisesByDate = exercisesByDate;
+        _pRatings = pRatings;
       });
     }
   }
@@ -289,12 +292,29 @@ class CalendarScreenState extends State<CalendarScreen> {
         isPartial = total > 0 && done * 2 >= total;
       }
 
+      final rating = _pRatings[dateStr];
+      final ratingBg = rating != null ? AppColors.pColor(rating) : null;
+      final defaultDayColor = isCompleted
+          ? AppColors.success
+          : isPartial
+              ? AppColors.warning
+              : isMissed
+                  ? AppColors.missed
+                  : isToday
+                      ? AppColors.accent
+                      : isFuture
+                          ? AppColors.textMuted
+                          : AppColors.text;
+      // On a rated (light/red) background, use dark text for legibility.
+      final dayColor = ratingBg != null ? Colors.black87 : defaultDayColor;
+
       cells.add(
         GestureDetector(
           onTap: () => _selectDate(dateStr),
           child: Container(
             margin: const EdgeInsets.all(2),
             decoration: BoxDecoration(
+              color: ratingBg,
               borderRadius: BorderRadius.circular(8),
               border: isSelected
                   ? Border.all(color: AppColors.accent, width: 2)
@@ -309,17 +329,7 @@ class CalendarScreenState extends State<CalendarScreen> {
                     fontSize: 13,
                     fontWeight:
                         isToday || isCompleted ? FontWeight.w700 : FontWeight.w400,
-                    color: isCompleted
-                        ? AppColors.success
-                        : isPartial
-                            ? AppColors.warning
-                            : isMissed
-                                ? AppColors.missed
-                                : isToday
-                                    ? AppColors.accent
-                                    : isFuture
-                                        ? AppColors.textMuted
-                                        : AppColors.text,
+                    color: dayColor,
                   ),
                 ),
                 const SizedBox(height: 1),

@@ -15,6 +15,16 @@ class AppColors {
   static const text = Color(0xFFF5F5F5);
   static const textSecondary = Color(0xFF999999);
   static const textMuted = Color(0xFF555555);
+
+  /// Maps a daily "p" rating in [-2, 2] to a heatmap color.
+  /// 2 = white (excellent), -2 = red (horrible). Linear interpolation in RGB.
+  static Color pColor(int value) {
+    final clamped = value.clamp(-2, 2);
+    // t=0 at -2 (red), t=1 at 2 (white)
+    final t = (clamped + 2) / 4.0;
+    final channel = (255 * t).round();
+    return Color.fromARGB(255, 255, channel, channel);
+  }
 }
 
 final appTheme = ThemeData(

@@ -7,6 +7,7 @@ const _exercisesPrefix = 'flexit_exercises_';
 const _timerPrefix = 'flexit_timer_';
 const _repsPrefix = 'flexit_reps_';
 const _startPrefix = 'flexit_start_';
+const _pRatingPrefix = 'flexit_p_';
 
 Future<List<Session>> getSessions() async {
   final prefs = await SharedPreferences.getInstance();
@@ -96,6 +97,29 @@ Future<int> getTimerSeconds(String settingKey, int defaultSeconds) async {
 Future<void> setTimerSeconds(String settingKey, int seconds) async {
   final prefs = await SharedPreferences.getInstance();
   await prefs.setInt('$_timerPrefix$settingKey', seconds);
+}
+
+Future<int?> getPRating(String date) async {
+  final prefs = await SharedPreferences.getInstance();
+  return prefs.getInt('$_pRatingPrefix$date');
+}
+
+Future<void> setPRating(String date, int value) async {
+  assert(value >= -2 && value <= 2, 'p rating must be in [-2, 2]');
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setInt('$_pRatingPrefix$date', value);
+}
+
+Future<Map<String, int>> getAllPRatings() async {
+  final prefs = await SharedPreferences.getInstance();
+  final result = <String, int>{};
+  for (final key in prefs.getKeys()) {
+    if (!key.startsWith(_pRatingPrefix)) continue;
+    final value = prefs.getInt(key);
+    if (value == null) continue;
+    result[key.substring(_pRatingPrefix.length)] = value;
+  }
+  return result;
 }
 
 Future<int> getRepsCount(String settingKey, int defaultReps) async {
