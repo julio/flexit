@@ -116,9 +116,39 @@ class _TodayScreenState extends State<TodayScreen> {
     await _loadState();
   }
 
+  Future<bool?> _confirmUndo() {
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.card,
+        title: const Text('Undo this completion?',
+            style: TextStyle(color: AppColors.text, fontSize: 17)),
+        content: const Text(
+          'You already marked this as done.',
+          style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel',
+                style: TextStyle(color: AppColors.textSecondary)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Undo',
+                style: TextStyle(
+                    color: AppColors.missed, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _toggleExercise(String atomicId) async {
     final updated = Set<String>.from(_completedExercises);
     if (updated.contains(atomicId)) {
+      final confirmed = await _confirmUndo();
+      if (confirmed != true) return;
       updated.remove(atomicId);
     } else {
       updated.add(atomicId);
