@@ -3,6 +3,7 @@ import '../data/exercises.dart';
 import '../data/storage.dart';
 import '../models/session.dart';
 import '../theme.dart';
+import 'settings_screen.dart';
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
@@ -72,7 +73,22 @@ class CalendarScreenState extends State<CalendarScreen> {
       ..sort((a, b) => b.date.compareTo(a.date));
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Calendar')),
+      appBar: AppBar(
+        title: const Text('Calendar'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings_outlined,
+                color: AppColors.textSecondary),
+            tooltip: 'Settings',
+            onPressed: () async {
+              await Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SettingsScreen()),
+              );
+              await _loadSessions();
+            },
+          ),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
         children: [
