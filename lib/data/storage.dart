@@ -8,8 +8,10 @@ const _timerPrefix = 'flexit_timer_';
 const _repsPrefix = 'flexit_reps_';
 const _startPrefix = 'flexit_start_';
 const _pRatingPrefix = 'flexit_p_';
+const _alcoholPrefix = 'flexit_alc_';
 const _calendarShowPKey = 'flexit_calendar_show_p';
 const _calendarShowCompletionKey = 'flexit_calendar_show_completion';
+const _calendarShowAlcoholKey = 'flexit_calendar_show_alcohol';
 
 Future<List<Session>> getSessions() async {
   final prefs = await SharedPreferences.getInstance();
@@ -122,6 +124,39 @@ Future<Map<String, int>> getAllPRatings() async {
     result[key.substring(_pRatingPrefix.length)] = value;
   }
   return result;
+}
+
+Future<int?> getAlcoholRating(String date) async {
+  final prefs = await SharedPreferences.getInstance();
+  return prefs.getInt('$_alcoholPrefix$date');
+}
+
+Future<void> setAlcoholRating(String date, int value) async {
+  assert(value >= 0 && value <= 4, 'alcohol rating must be in [0, 4]');
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setInt('$_alcoholPrefix$date', value);
+}
+
+Future<Map<String, int>> getAllAlcoholRatings() async {
+  final prefs = await SharedPreferences.getInstance();
+  final result = <String, int>{};
+  for (final key in prefs.getKeys()) {
+    if (!key.startsWith(_alcoholPrefix)) continue;
+    final value = prefs.getInt(key);
+    if (value == null) continue;
+    result[key.substring(_alcoholPrefix.length)] = value;
+  }
+  return result;
+}
+
+Future<bool> getCalendarShowAlcohol() async {
+  final prefs = await SharedPreferences.getInstance();
+  return prefs.getBool(_calendarShowAlcoholKey) ?? true;
+}
+
+Future<void> setCalendarShowAlcohol(bool value) async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setBool(_calendarShowAlcoholKey, value);
 }
 
 Future<bool> getCalendarShowP() async {

@@ -16,6 +16,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final Map<String, int> _repValues = {};
   bool _showP = true;
   bool _showCompletion = true;
+  bool _showAlcohol = true;
   bool _loading = true;
 
   @override
@@ -49,6 +50,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
     final showP = await getCalendarShowP();
     final showCompletion = await getCalendarShowCompletion();
+    final showAlcohol = await getCalendarShowAlcohol();
     if (mounted) {
       setState(() {
         _timerValues
@@ -59,6 +61,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ..addAll(reps);
         _showP = showP;
         _showCompletion = showCompletion;
+        _showAlcohol = showAlcohol;
         _loading = false;
       });
     }
@@ -72,6 +75,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _toggleShowCompletion(bool value) async {
     setState(() => _showCompletion = value);
     await setCalendarShowCompletion(value);
+  }
+
+  Future<void> _toggleShowAlcohol(bool value) async {
+    setState(() => _showAlcohol = value);
+    await setCalendarShowAlcohol(value);
   }
 
   Future<void> _updateTimer(String key, int seconds) async {
@@ -107,6 +115,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   description: 'Highlights done, partial, and missed days.',
                   value: _showCompletion,
                   onChanged: _toggleShowCompletion,
+                ),
+                _ToggleTile(
+                  label: 'Show alcohol',
+                  description: 'Marks days you logged alcohol with a dot.',
+                  value: _showAlcohol,
+                  onChanged: _toggleShowAlcohol,
                 ),
                 const SizedBox(height: 16),
                 if (_timed.isNotEmpty) ...[

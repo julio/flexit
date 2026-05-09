@@ -16,8 +16,10 @@ class CalendarScreenState extends State<CalendarScreen> {
   List<Session> _sessions = [];
   Map<String, Set<String>> _exercisesByDate = {};
   Map<String, int> _pRatings = {};
+  Map<String, int> _alcoholRatings = {};
   bool _showP = true;
   bool _showCompletion = true;
+  bool _showAlcohol = true;
   DateTime _focusedMonth = DateTime.now();
   String? _selectedDate;
   Set<String> _selectedDateExercises = {};
@@ -32,15 +34,19 @@ class CalendarScreenState extends State<CalendarScreen> {
     final sessions = await getSessions();
     final exercisesByDate = await getAllCompletedExercises();
     final pRatings = await getAllPRatings();
+    final alcoholRatings = await getAllAlcoholRatings();
     final showP = await getCalendarShowP();
     final showCompletion = await getCalendarShowCompletion();
+    final showAlcohol = await getCalendarShowAlcohol();
     if (mounted) {
       setState(() {
         _sessions = sessions;
         _exercisesByDate = exercisesByDate;
         _pRatings = pRatings;
+        _alcoholRatings = alcoholRatings;
         _showP = showP;
         _showCompletion = showCompletion;
+        _showAlcohol = showAlcohol;
       });
     }
   }
@@ -335,6 +341,12 @@ class CalendarScreenState extends State<CalendarScreen> {
       final boldDay =
           _showCompletion && (isToday || isCompleted);
 
+      final alcoholLevel = _alcoholRatings[dateStr];
+      final alcoholDot =
+          (_showAlcohol && alcoholLevel != null && alcoholLevel > 0)
+              ? AppColors.alcoholColor(alcoholLevel)
+              : null;
+
       cells.add(
         GestureDetector(
           onTap: () => _selectDate(dateStr),
@@ -347,31 +359,51 @@ class CalendarScreenState extends State<CalendarScreen> {
                   ? Border.all(color: AppColors.accent, width: 2)
                   : null,
             ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+            child: Stack(
               children: [
-                Text(
-                  '$day',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight:
-                        boldDay ? FontWeight.w700 : FontWeight.w400,
-                    color: dayColor,
-                  ),
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      '$day',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight:
+                            boldDay ? FontWeight.w700 : FontWeight.w400,
+                        color: dayColor,
+                      ),
+                    ),
+                    const SizedBox(height: 1),
+                    if (_showCompletion && isCompleted)
+                      const Icon(Icons.check_circle,
+                          color: AppColors.success, size: 14)
+                    else if (_showCompletion && isPartial)
+                      const Icon(Icons.error,
+                          color: AppColors.warning, size: 14)
+                    else if (_showCompletion && isMissed)
+                      const Icon(Icons.cancel,
+                          color: AppColors.missed, size: 14)
+                    else if (_showCompletion && isToday)
+                      Icon(Icons.radio_button_unchecked,
+                          color: AppColors.accent.withValues(alpha: 0.6),
+                          size: 14)
+                    else
+                      const SizedBox(height: 14),
+                  ],
                 ),
-                const SizedBox(height: 1),
-                if (_showCompletion && isCompleted)
-                  const Icon(Icons.check_circle,
-                      color: AppColors.success, size: 14)
-                else if (_showCompletion && isPartial)
-                  const Icon(Icons.error, color: AppColors.warning, size: 14)
-                else if (_showCompletion && isMissed)
-                  const Icon(Icons.cancel, color: AppColors.missed, size: 14)
-                else if (_showCompletion && isToday)
-                  Icon(Icons.radio_button_unchecked,
-                      color: AppColors.accent.withValues(alpha: 0.6), size: 14)
-                else
-                  const SizedBox(height: 14),
+                if (alcoholDot != null)
+                  Positioned(
+                    top: 3,
+                    right: 3,
+                    child: Container(
+                      width: 7,
+                      height: 7,
+                      decoration: BoxDecoration(
+                        color: alcoholDot,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),

@@ -460,5 +460,58 @@ void main() {
       expect(await getCalendarShowP(), isFalse);
       expect(await getCalendarShowCompletion(), isTrue);
     });
+
+    test('show alcohol defaults to true', () async {
+      expect(await getCalendarShowAlcohol(), isTrue);
+    });
+
+    test('show alcohol persists', () async {
+      await setCalendarShowAlcohol(false);
+      expect(await getCalendarShowAlcohol(), isFalse);
+    });
+  });
+
+  group('alcohol ratings', () {
+    test('returns null when no rating saved', () async {
+      expect(await getAlcoholRating('2026-05-08'), isNull);
+    });
+
+    test('saves and retrieves a rating', () async {
+      await setAlcoholRating('2026-05-08', 2);
+      expect(await getAlcoholRating('2026-05-08'), 2);
+    });
+
+    test('overwrites previous rating for same date', () async {
+      await setAlcoholRating('2026-05-08', 0);
+      await setAlcoholRating('2026-05-08', 4);
+      expect(await getAlcoholRating('2026-05-08'), 4);
+    });
+
+    test('zero is a valid (and distinct from null) rating', () async {
+      await setAlcoholRating('2026-05-08', 0);
+      expect(await getAlcoholRating('2026-05-08'), 0);
+    });
+
+    test('getAllAlcoholRatings returns map keyed by date', () async {
+      await setAlcoholRating('2026-05-08', 0);
+      await setAlcoholRating('2026-05-09', 2);
+      await setAlcoholRating('2026-05-10', 4);
+      final all = await getAllAlcoholRatings();
+      expect(all, {
+        '2026-05-08': 0,
+        '2026-05-09': 2,
+        '2026-05-10': 4,
+      });
+    });
+
+    test('getAllAlcoholRatings ignores p ratings and other keys', () async {
+      SharedPreferences.setMockInitialValues({
+        'flexit_alc_2026-05-08': 1,
+        'flexit_p_2026-05-08': 1,
+        'flexit_timer_plank': 60,
+      });
+      final all = await getAllAlcoholRatings();
+      expect(all, {'2026-05-08': 1});
+    });
   });
 }

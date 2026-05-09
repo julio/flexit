@@ -25,6 +25,20 @@ class AppColors {
     final channel = (255 * t).round();
     return Color.fromARGB(255, 255, channel, channel);
   }
+
+  /// Marker color for alcohol level (1..4). Level 0 has no marker.
+  static const _alcoholPalette = <Color>[
+    Color(0xFFE9C46A), // 1 sip
+    Color(0xFFE39B3B), // 2 a glass
+    Color(0xFFD45A1A), // 3 a few glasses
+    Color(0xFF8B1E1E), // 4 drunk
+  ];
+
+  static Color? alcoholColor(int level) {
+    if (level <= 0) return null;
+    final i = level.clamp(1, 4) - 1;
+    return _alcoholPalette[i];
+  }
 }
 
 final appTheme = ThemeData(

@@ -29,6 +29,8 @@ class _TodayScreenState extends State<TodayScreen> {
   Duration? _finalElapsed;
   Timer? _ticker;
   int? _pRating;
+  int? _alcoholYesterday;
+  String _yesterdayKey = '';
 
   @override
   void initState() {
@@ -44,11 +46,14 @@ class _TodayScreenState extends State<TodayScreen> {
 
   Future<void> _loadState() async {
     final today = formatDate(DateTime.now());
+    final yesterday =
+        formatDate(DateTime.now().subtract(const Duration(days: 1)));
     final done = await isTodayComplete();
     final sessions = await getSessions();
     final completed = await getTodayCompletedExercises();
     final startTime = await getStartTime(today);
     final pRating = await getPRating(today);
+    final alcoholYesterday = await getAlcoholRating(yesterday);
     final timers = <String, int>{};
     final reps = <String, int>{};
     for (final e in dailyBlocks.expand((b) => b.exercises)) {
@@ -79,6 +84,8 @@ class _TodayScreenState extends State<TodayScreen> {
         _startTime = startTime;
         _finalElapsed = finalElapsed;
         _pRating = pRating;
+        _alcoholYesterday = alcoholYesterday;
+        _yesterdayKey = yesterday;
         _loading = false;
       });
       _updateTicker();
@@ -90,6 +97,13 @@ class _TodayScreenState extends State<TodayScreen> {
     await setPRating(today, value);
     HapticFeedback.lightImpact();
     if (mounted) setState(() => _pRating = value);
+  }
+
+  Future<void> _setAlcoholYesterday(int value) async {
+    if (_yesterdayKey.isEmpty) return;
+    await setAlcoholRating(_yesterdayKey, value);
+    HapticFeedback.lightImpact();
+    if (mounted) setState(() => _alcoholYesterday = value);
   }
 
   void _updateTicker() {
@@ -336,10 +350,19 @@ class _TodayScreenState extends State<TodayScreen> {
             ),
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
               child: _PRatingCard(
                 value: _pRating,
                 onSelect: _setPRating,
+              ),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+              child: _AlcoholCard(
+                value: _alcoholYesterday,
+                onSelect: _setAlcoholYesterday,
               ),
             ),
           ),
@@ -1031,3 +1054,116 @@ class _PRatingButton extends StatelessWidget {
     );
   }
 }
+
+class _AlcoholCard extends StatelessWidget {
+  final int? value;
+  final ValueChanged<int> onSelect;
+
+  const _AlcoholCard({required this.value, required this.onSelect});
+
+  static const _options = [0, 1, 2, 3, 4];
+  static const _labels = {
+    0: 'none',
+    1: 'a sip',
+    2: 'a glass',
+    3: 'a few glasses',
+    4: 'drunk',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.cardBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Drinks yesterday',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.text,
+                ),
+              ),
+              if (value != null)
+                Text(
+                  _labels[value]!,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              for (final v in _options) ...[
+                if (v != _options.first) const SizedBox(width: 6),
+                Expanded(
+                  child: _AlcoholButton(
+                    level: v,
+                    selected: value == v,
+                    onTap: () => onSelect(v),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AlcoholButton extends StatelessWidget {
+  final int level;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _AlcoholButton({
+    required this.level,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final fill = AppColors.alcoholColor(level);
+    final bg = fill ?? AppColors.cardBorder;
+    final textColor = level == 0 ? AppColors.textSecondary : Colors.black87;
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        height: 38,
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: selected ? AppColors.text : Colors.transparent,
+            width: 2,
+          ),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          '$level',
+          style: TextStyle(
+            color: textColor,
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ),
+    );
+  }
+}
+

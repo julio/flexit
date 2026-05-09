@@ -36,4 +36,24 @@ void main() {
       expect(AppColors.pColor(-5), AppColors.pColor(-2));
     });
   });
+
+  group('AppColors.alcoholColor', () {
+    test('level 0 returns null (no marker)', () {
+      expect(AppColors.alcoholColor(0), isNull);
+    });
+
+    test('negative levels return null', () {
+      expect(AppColors.alcoholColor(-1), isNull);
+    });
+
+    test('levels 1..4 return distinct colors', () {
+      final colors = [1, 2, 3, 4].map(AppColors.alcoholColor).toSet();
+      expect(colors.length, 4);
+      expect(colors.contains(null), isFalse);
+    });
+
+    test('clamps levels above 4 to the level-4 color', () {
+      expect(AppColors.alcoholColor(99), AppColors.alcoholColor(4));
+    });
+  });
 }
