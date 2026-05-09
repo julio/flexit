@@ -7,6 +7,7 @@ import '../data/exercises.dart';
 import '../data/storage.dart';
 import '../models/exercise.dart';
 import '../models/session.dart';
+import '../services/notifications.dart';
 import '../theme.dart';
 import 'settings_screen.dart';
 
@@ -497,6 +498,9 @@ class _ExerciseCard extends StatelessWidget {
                                   '${atomicIds[i]}@$timerDuration'),
                               label: '${i + 1}',
                               durationSeconds: timerDuration,
+                              notificationId: atomicIds[i].hashCode,
+                              notificationBody:
+                                  '${exercise.name} · set ${i + 1} done',
                               isDone:
                                   completedExercises.contains(atomicIds[i]),
                               onComplete: () => onToggle(atomicIds[i]),
@@ -689,6 +693,8 @@ class _RunningClock extends StatelessWidget {
 class _TimerSetButton extends StatefulWidget {
   final String label;
   final int durationSeconds;
+  final int notificationId;
+  final String notificationBody;
   final bool isDone;
   final VoidCallback onComplete;
   final VoidCallback onUndo;
@@ -697,6 +703,8 @@ class _TimerSetButton extends StatefulWidget {
     super.key,
     required this.label,
     required this.durationSeconds,
+    required this.notificationId,
+    required this.notificationBody,
     required this.isDone,
     required this.onComplete,
     required this.onUndo,
@@ -740,6 +748,7 @@ class _TimerSetButtonState extends State<_TimerSetButton>
     if (!_running || _endTime == null) return;
     if (!DateTime.now().isBefore(_endTime!)) {
       _ticker?.cancel();
+      TimerNotifications.instance.cancel(widget.notificationId);
       setState(() {
         _running = false;
         _endTime = null;
@@ -752,12 +761,18 @@ class _TimerSetButtonState extends State<_TimerSetButton>
   }
 
   void _start() {
+    final end = DateTime.now().add(Duration(seconds: widget.durationSeconds));
     setState(() {
       _running = true;
-      _endTime =
-          DateTime.now().add(Duration(seconds: widget.durationSeconds));
+      _endTime = end;
     });
     HapticFeedback.lightImpact();
+    TimerNotifications.instance.schedule(
+      id: widget.notificationId,
+      title: 'Timer done',
+      body: widget.notificationBody,
+      fireAt: end,
+    );
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
       _checkAndUpdate();
@@ -766,6 +781,7 @@ class _TimerSetButtonState extends State<_TimerSetButton>
 
   void _cancel() {
     _ticker?.cancel();
+    TimerNotifications.instance.cancel(widget.notificationId);
     setState(() {
       _running = false;
       _endTime = null;
