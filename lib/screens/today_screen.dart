@@ -306,6 +306,24 @@ class _TodayScreenState extends State<TodayScreen> {
                 ),
               ),
             ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+              child: _PRatingCard(
+                value: _pRating,
+                onSelect: _setPRating,
+              ),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+              child: _AlcoholCard(
+                value: _alcoholYesterday,
+                onSelect: _setAlcoholYesterday,
+              ),
+            ),
+          ),
           if (!_done)
             SliverToBoxAdapter(
               child: Padding(
@@ -348,24 +366,6 @@ class _TodayScreenState extends State<TodayScreen> {
                 ),
               ),
             ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-              child: _PRatingCard(
-                value: _pRating,
-                onSelect: _setPRating,
-              ),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-              child: _AlcoholCard(
-                value: _alcoholYesterday,
-                onSelect: _setAlcoholYesterday,
-              ),
-            ),
-          ),
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
             sliver: SliverList(
