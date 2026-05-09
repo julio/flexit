@@ -14,6 +14,8 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   final Map<String, int> _timerValues = {};
   final Map<String, int> _repValues = {};
+  bool _showP = true;
+  bool _showCompletion = true;
   bool _loading = true;
 
   @override
@@ -45,6 +47,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       reps[spec.settingKey] =
           await getRepsCount(spec.settingKey, spec.defaultReps);
     }
+    final showP = await getCalendarShowP();
+    final showCompletion = await getCalendarShowCompletion();
     if (mounted) {
       setState(() {
         _timerValues
@@ -53,9 +57,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _repValues
           ..clear()
           ..addAll(reps);
+        _showP = showP;
+        _showCompletion = showCompletion;
         _loading = false;
       });
     }
+  }
+
+  Future<void> _toggleShowP(bool value) async {
+    setState(() => _showP = value);
+    await setCalendarShowP(value);
+  }
+
+  Future<void> _toggleShowCompletion(bool value) async {
+    setState(() => _showCompletion = value);
+    await setCalendarShowCompletion(value);
   }
 
   Future<void> _updateTimer(String key, int seconds) async {
@@ -78,6 +94,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
           : ListView(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
               children: [
+                const _SectionHeader('CALENDAR'),
+                const SizedBox(height: 12),
+                _ToggleTile(
+                  label: 'Show p heatmap',
+                  description: 'Tints each day cell by its p rating.',
+                  value: _showP,
+                  onChanged: _toggleShowP,
+                ),
+                _ToggleTile(
+                  label: 'Show completion',
+                  description: 'Highlights done, partial, and missed days.',
+                  value: _showCompletion,
+                  onChanged: _toggleShowCompletion,
+                ),
+                const SizedBox(height: 16),
                 if (_timed.isNotEmpty) ...[
                   const _SectionHeader('TIMERS'),
                   const SizedBox(height: 12),
@@ -128,6 +159,65 @@ class _SectionHeader extends StatelessWidget {
         fontWeight: FontWeight.w700,
         color: AppColors.text,
         letterSpacing: 0.5,
+      ),
+    );
+  }
+}
+
+class _ToggleTile extends StatelessWidget {
+  final String label;
+  final String description;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  const _ToggleTile({
+    required this.label,
+    required this.description,
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.cardBorder),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.text,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  description,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            value: value,
+            onChanged: onChanged,
+            activeThumbColor: AppColors.accent,
+          ),
+        ],
       ),
     );
   }

@@ -8,6 +8,8 @@ const _timerPrefix = 'flexit_timer_';
 const _repsPrefix = 'flexit_reps_';
 const _startPrefix = 'flexit_start_';
 const _pRatingPrefix = 'flexit_p_';
+const _calendarShowPKey = 'flexit_calendar_show_p';
+const _calendarShowCompletionKey = 'flexit_calendar_show_completion';
 
 Future<List<Session>> getSessions() async {
   final prefs = await SharedPreferences.getInstance();
@@ -120,6 +122,26 @@ Future<Map<String, int>> getAllPRatings() async {
     result[key.substring(_pRatingPrefix.length)] = value;
   }
   return result;
+}
+
+Future<bool> getCalendarShowP() async {
+  final prefs = await SharedPreferences.getInstance();
+  return prefs.getBool(_calendarShowPKey) ?? true;
+}
+
+Future<void> setCalendarShowP(bool value) async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setBool(_calendarShowPKey, value);
+}
+
+Future<bool> getCalendarShowCompletion() async {
+  final prefs = await SharedPreferences.getInstance();
+  return prefs.getBool(_calendarShowCompletionKey) ?? true;
+}
+
+Future<void> setCalendarShowCompletion(bool value) async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setBool(_calendarShowCompletionKey, value);
 }
 
 Future<int> getRepsCount(String settingKey, int defaultReps) async {

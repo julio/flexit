@@ -15,6 +15,8 @@ class CalendarScreenState extends State<CalendarScreen> {
   List<Session> _sessions = [];
   Map<String, Set<String>> _exercisesByDate = {};
   Map<String, int> _pRatings = {};
+  bool _showP = true;
+  bool _showCompletion = true;
   DateTime _focusedMonth = DateTime.now();
   String? _selectedDate;
   Set<String> _selectedDateExercises = {};
@@ -29,11 +31,15 @@ class CalendarScreenState extends State<CalendarScreen> {
     final sessions = await getSessions();
     final exercisesByDate = await getAllCompletedExercises();
     final pRatings = await getAllPRatings();
+    final showP = await getCalendarShowP();
+    final showCompletion = await getCalendarShowCompletion();
     if (mounted) {
       setState(() {
         _sessions = sessions;
         _exercisesByDate = exercisesByDate;
         _pRatings = pRatings;
+        _showP = showP;
+        _showCompletion = showCompletion;
       });
     }
   }
@@ -293,20 +299,25 @@ class CalendarScreenState extends State<CalendarScreen> {
       }
 
       final rating = _pRatings[dateStr];
-      final ratingBg = rating != null ? AppColors.pColor(rating) : null;
-      final defaultDayColor = isCompleted
-          ? AppColors.success
-          : isPartial
-              ? AppColors.warning
-              : isMissed
-                  ? AppColors.missed
-                  : isToday
-                      ? AppColors.accent
-                      : isFuture
-                          ? AppColors.textMuted
-                          : AppColors.text;
+      final ratingBg =
+          (_showP && rating != null) ? AppColors.pColor(rating) : null;
+      final completionDayColor = _showCompletion
+          ? (isCompleted
+              ? AppColors.success
+              : isPartial
+                  ? AppColors.warning
+                  : isMissed
+                      ? AppColors.missed
+                      : isToday
+                          ? AppColors.accent
+                          : isFuture
+                              ? AppColors.textMuted
+                              : AppColors.text)
+          : (isFuture ? AppColors.textMuted : AppColors.text);
       // On a rated (light/red) background, use dark text for legibility.
-      final dayColor = ratingBg != null ? Colors.black87 : defaultDayColor;
+      final dayColor = ratingBg != null ? Colors.black87 : completionDayColor;
+      final boldDay =
+          _showCompletion && (isToday || isCompleted);
 
       cells.add(
         GestureDetector(
@@ -328,19 +339,19 @@ class CalendarScreenState extends State<CalendarScreen> {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight:
-                        isToday || isCompleted ? FontWeight.w700 : FontWeight.w400,
+                        boldDay ? FontWeight.w700 : FontWeight.w400,
                     color: dayColor,
                   ),
                 ),
                 const SizedBox(height: 1),
-                if (isCompleted)
+                if (_showCompletion && isCompleted)
                   const Icon(Icons.check_circle,
                       color: AppColors.success, size: 14)
-                else if (isPartial)
+                else if (_showCompletion && isPartial)
                   const Icon(Icons.error, color: AppColors.warning, size: 14)
-                else if (isMissed)
+                else if (_showCompletion && isMissed)
                   const Icon(Icons.cancel, color: AppColors.missed, size: 14)
-                else if (isToday)
+                else if (_showCompletion && isToday)
                   Icon(Icons.radio_button_unchecked,
                       color: AppColors.accent.withValues(alpha: 0.6), size: 14)
                 else

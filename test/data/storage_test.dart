@@ -430,4 +430,35 @@ void main() {
       expect(all, {'2026-04-10': 1});
     });
   });
+
+  group('calendar visibility flags', () {
+    test('show p defaults to true', () async {
+      expect(await getCalendarShowP(), isTrue);
+    });
+
+    test('show completion defaults to true', () async {
+      expect(await getCalendarShowCompletion(), isTrue);
+    });
+
+    test('show p persists', () async {
+      await setCalendarShowP(false);
+      expect(await getCalendarShowP(), isFalse);
+      await setCalendarShowP(true);
+      expect(await getCalendarShowP(), isTrue);
+    });
+
+    test('show completion persists', () async {
+      await setCalendarShowCompletion(false);
+      expect(await getCalendarShowCompletion(), isFalse);
+      await setCalendarShowCompletion(true);
+      expect(await getCalendarShowCompletion(), isTrue);
+    });
+
+    test('flags are independent', () async {
+      await setCalendarShowP(false);
+      await setCalendarShowCompletion(true);
+      expect(await getCalendarShowP(), isFalse);
+      expect(await getCalendarShowCompletion(), isTrue);
+    });
+  });
 }
