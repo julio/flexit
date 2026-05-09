@@ -706,32 +706,61 @@ class _TimerSetButton extends StatefulWidget {
   State<_TimerSetButton> createState() => _TimerSetButtonState();
 }
 
-class _TimerSetButtonState extends State<_TimerSetButton> {
+class _TimerSetButtonState extends State<_TimerSetButton>
+    with WidgetsBindingObserver {
   Timer? _ticker;
-  int _remaining = 0;
+  DateTime? _endTime;
   bool _running = false;
+
+  int get _remaining {
+    if (_endTime == null) return 0;
+    final r = _endTime!.difference(DateTime.now()).inSeconds;
+    return r > 0 ? r : 0;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _ticker?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _checkAndUpdate();
+  }
+
+  void _checkAndUpdate() {
+    if (!_running || _endTime == null) return;
+    if (!DateTime.now().isBefore(_endTime!)) {
+      _ticker?.cancel();
+      setState(() {
+        _running = false;
+        _endTime = null;
+      });
+      HapticFeedback.heavyImpact();
+      widget.onComplete();
+    } else {
+      setState(() {});
+    }
   }
 
   void _start() {
     setState(() {
       _running = true;
-      _remaining = widget.durationSeconds;
+      _endTime =
+          DateTime.now().add(Duration(seconds: widget.durationSeconds));
     });
     HapticFeedback.lightImpact();
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
-      setState(() => _remaining -= 1);
-      if (_remaining <= 0) {
-        _ticker?.cancel();
-        setState(() => _running = false);
-        HapticFeedback.heavyImpact();
-        widget.onComplete();
-      }
+      _checkAndUpdate();
     });
   }
 
@@ -739,7 +768,7 @@ class _TimerSetButtonState extends State<_TimerSetButton> {
     _ticker?.cancel();
     setState(() {
       _running = false;
-      _remaining = 0;
+      _endTime = null;
     });
   }
 
