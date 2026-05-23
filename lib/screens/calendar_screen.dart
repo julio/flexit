@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../data/exercises.dart';
 import '../data/storage.dart';
+import '../models/exercise.dart';
 import '../models/session.dart';
 import '../theme.dart';
 import 'settings_screen.dart';
@@ -58,6 +59,75 @@ class CalendarScreenState extends State<CalendarScreen> {
         _selectedDate = dateStr;
         _selectedDateExercises = exercises;
       });
+    }
+  }
+
+  Future<void> _setSelectedPRating(int value) async {
+    final date = _selectedDate;
+    if (date == null) return;
+    await setPRating(date, value);
+    if (mounted) {
+      setState(() => _pRatings = {..._pRatings, date: value});
+    }
+  }
+
+  Future<void> _setSelectedAlcohol(int value) async {
+    final date = _selectedDate;
+    if (date == null) return;
+    await setAlcoholRating(date, value);
+    if (mounted) {
+      setState(() => _alcoholRatings = {..._alcoholRatings, date: value});
+    }
+  }
+
+  Future<void> _toggleSelectedExercise(Exercise exercise) async {
+    final date = _selectedDate;
+    if (date == null) return;
+    final next = {..._selectedDateExercises};
+    final atomicIds = exercise.atomicIds.toSet();
+    final alreadyAllDone = atomicIds.every(next.contains);
+    if (alreadyAllDone) {
+      next.removeAll(atomicIds);
+    } else {
+      next.addAll(atomicIds);
+    }
+    await saveCompletedExercises(date, next);
+    await _reconcileSession(date, next);
+    if (mounted) {
+      final sessions = await getSessions();
+      setState(() {
+        _sessions = sessions;
+        _selectedDateExercises = next;
+        if (next.isEmpty) {
+          _exercisesByDate = {..._exercisesByDate}..remove(date);
+        } else {
+          _exercisesByDate = {..._exercisesByDate, date: next};
+        }
+      });
+    }
+  }
+
+  /// Save or remove a "retroactive" session for [date] based on whether every
+  /// atomic set is checked. A retroactive session is one we created here (no
+  /// startedAt); we never touch real sessions that have a startedAt timestamp.
+  Future<void> _reconcileSession(String date, Set<String> done) async {
+    final validAtomicIds = dailyBlocks
+        .expand((b) => b.exercises)
+        .expand((e) => e.atomicIds)
+        .toSet();
+    final allDone = validAtomicIds.isNotEmpty &&
+        validAtomicIds.every(done.contains);
+    final existing = _sessions.where((s) => s.date == date).firstOrNull;
+    final isRetroactive = existing != null && existing.startedAt == null;
+
+    if (allDone && existing == null) {
+      await saveSession(Session(
+        date: date,
+        completedAt: DateTime.parse('${date}T12:00:00').toIso8601String(),
+        type: 'daily',
+      ));
+    } else if (!allDone && isRetroactive) {
+      await removeSession(date);
     }
   }
 
@@ -163,7 +233,7 @@ class CalendarScreenState extends State<CalendarScreen> {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8),
                   child: Row(
-                    children: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+                    children: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
                         .map((d) => Expanded(
                               child: Center(
                                 child: Text(
@@ -284,7 +354,8 @@ class CalendarScreenState extends State<CalendarScreen> {
         DateTime(_focusedMonth.year, _focusedMonth.month, 1);
     final daysInMonth =
         DateTime(_focusedMonth.year, _focusedMonth.month + 1, 0).day;
-    final startWeekday = firstOfMonth.weekday - 1;
+    // Dart: Mon=1..Sun=7. We want Sun=0..Sat=6 so weeks start on Sunday.
+    final startWeekday = firstOfMonth.weekday % 7;
 
     final sortedSessionDates = sessionDates.toList()..sort();
     final firstSessionDate =
@@ -428,6 +499,9 @@ class CalendarScreenState extends State<CalendarScreen> {
     required bool isToday,
     required Set<String> sessionDates,
   }) {
+    final date = _selectedDate!;
+    final isFuture = DateTime.parse(date).isAfter(DateTime.now());
+    final editable = !isToday && !isFuture;
     final allExercises = dailyBlocks.expand((b) => b.exercises).toList();
     final totalAtomic =
         allExercises.fold<int>(0, (sum, e) => sum + e.sets);
@@ -449,7 +523,7 @@ class CalendarScreenState extends State<CalendarScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            _formatDisplayDate(_selectedDate!),
+            _formatDisplayDate(date),
             style: const TextStyle(
               color: AppColors.text,
               fontSize: 15,
@@ -477,6 +551,11 @@ class CalendarScreenState extends State<CalendarScreen> {
               style:
                   const TextStyle(color: AppColors.textSecondary, fontSize: 13),
             )
+          else if (isFuture)
+            const Text(
+              'Future',
+              style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+            )
           else
             Text(
               hasExerciseData
@@ -484,7 +563,19 @@ class CalendarScreenState extends State<CalendarScreen> {
                   : 'Missed',
               style: const TextStyle(color: AppColors.missed, fontSize: 13),
             ),
-          if (hasExerciseData) ...[
+          if (editable) ...[
+            const SizedBox(height: 14),
+            _CompactPRating(
+              value: _pRatings[date],
+              onSelect: _setSelectedPRating,
+            ),
+            const SizedBox(height: 10),
+            _CompactAlcohol(
+              value: _alcoholRatings[date],
+              onSelect: _setSelectedAlcohol,
+            ),
+          ],
+          if (editable || hasExerciseData) ...[
             const SizedBox(height: 12),
             ...allExercises.map((e) {
               final doneSets =
@@ -494,8 +585,8 @@ class CalendarScreenState extends State<CalendarScreen> {
               final trailing = e.sets > 1
                   ? '$doneSets/${e.sets} sets'
                   : e.duration;
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 6),
+              final row = Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
                 child: Row(
                   children: [
                     Icon(
@@ -541,6 +632,12 @@ class CalendarScreenState extends State<CalendarScreen> {
                   ],
                 ),
               );
+              if (!editable) return row;
+              return InkWell(
+                onTap: () => _toggleSelectedExercise(e),
+                borderRadius: BorderRadius.circular(8),
+                child: row,
+              );
             }),
           ],
         ],
@@ -579,6 +676,166 @@ class CalendarScreenState extends State<CalendarScreen> {
     if (m == 0) return '${s}s';
     if (s == 0) return '${m}m';
     return '${m}m ${s}s';
+  }
+}
+
+class _CompactPRating extends StatelessWidget {
+  final int? value;
+  final ValueChanged<int> onSelect;
+
+  const _CompactPRating({required this.value, required this.onSelect});
+
+  static const _options = [2, 1, 0, -1, -2];
+  static const _labels = {
+    2: 'excellent',
+    1: 'good',
+    0: 'ok',
+    -1: 'bad',
+    -2: 'horrible',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'P',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+                letterSpacing: 0.5,
+              ),
+            ),
+            if (value != null)
+              Text(
+                _labels[value]!,
+                style: const TextStyle(
+                    fontSize: 11, color: AppColors.textSecondary),
+              ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            for (final v in _options) ...[
+              if (v != _options.first) const SizedBox(width: 6),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => onSelect(v),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 120),
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: AppColors.pColor(v),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: value == v ? AppColors.text : Colors.transparent,
+                        width: 2,
+                      ),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      v > 0 ? '+$v' : '$v',
+                      style: const TextStyle(
+                        color: Colors.black87,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _CompactAlcohol extends StatelessWidget {
+  final int? value;
+  final ValueChanged<int> onSelect;
+
+  const _CompactAlcohol({required this.value, required this.onSelect});
+
+  static const _options = [0, 1, 2, 3, 4];
+  static const _labels = {
+    0: 'none',
+    1: 'a sip',
+    2: 'a glass',
+    3: 'a few glasses',
+    4: 'drunk',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'DRINKS',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+                letterSpacing: 0.5,
+              ),
+            ),
+            if (value != null)
+              Text(
+                _labels[value]!,
+                style: const TextStyle(
+                    fontSize: 11, color: AppColors.textSecondary),
+              ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            for (final v in _options) ...[
+              if (v != _options.first) const SizedBox(width: 6),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => onSelect(v),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 120),
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: AppColors.alcoholColor(v) ?? AppColors.cardBorder,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: value == v ? AppColors.text : Colors.transparent,
+                        width: 2,
+                      ),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      '$v',
+                      style: TextStyle(
+                        color: v == 0
+                            ? AppColors.textSecondary
+                            : Colors.black87,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ],
+    );
   }
 }
 
