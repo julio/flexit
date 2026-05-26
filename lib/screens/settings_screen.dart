@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../data/exercises.dart';
 import '../data/storage.dart';
+import '../main.dart' show themeIsDark;
 import '../models/exercise.dart';
 import '../theme.dart';
 
@@ -14,9 +15,6 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   final Map<String, int> _timerValues = {};
   final Map<String, int> _repValues = {};
-  bool _showP = true;
-  bool _showCompletion = true;
-  bool _showAlcohol = true;
   bool _loading = true;
 
   @override
@@ -48,9 +46,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       reps[spec.settingKey] =
           await getRepsCount(spec.settingKey, spec.defaultReps);
     }
-    final showP = await getCalendarShowP();
-    final showCompletion = await getCalendarShowCompletion();
-    final showAlcohol = await getCalendarShowAlcohol();
     if (mounted) {
       setState(() {
         _timerValues
@@ -59,27 +54,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _repValues
           ..clear()
           ..addAll(reps);
-        _showP = showP;
-        _showCompletion = showCompletion;
-        _showAlcohol = showAlcohol;
         _loading = false;
       });
     }
   }
 
-  Future<void> _toggleShowP(bool value) async {
-    setState(() => _showP = value);
-    await setCalendarShowP(value);
-  }
-
-  Future<void> _toggleShowCompletion(bool value) async {
-    setState(() => _showCompletion = value);
-    await setCalendarShowCompletion(value);
-  }
-
-  Future<void> _toggleShowAlcohol(bool value) async {
-    setState(() => _showAlcohol = value);
-    await setCalendarShowAlcohol(value);
+  Future<void> _toggleDarkMode(bool dark) async {
+    await setDarkMode(dark);
+    themeIsDark.value = dark;
   }
 
   Future<void> _updateTimer(String key, int seconds) async {
@@ -102,25 +84,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
           : ListView(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
               children: [
-                const _SectionHeader('CALENDAR'),
+                const _SectionHeader('APPEARANCE'),
                 const SizedBox(height: 12),
-                _ToggleTile(
-                  label: 'Show p heatmap',
-                  description: 'Tints each day cell by its p rating.',
-                  value: _showP,
-                  onChanged: _toggleShowP,
-                ),
-                _ToggleTile(
-                  label: 'Show completion',
-                  description: 'Highlights done, partial, and missed days.',
-                  value: _showCompletion,
-                  onChanged: _toggleShowCompletion,
-                ),
-                _ToggleTile(
-                  label: 'Show alcohol',
-                  description: 'Marks days you logged alcohol with a dot.',
-                  value: _showAlcohol,
-                  onChanged: _toggleShowAlcohol,
+                ValueListenableBuilder<bool>(
+                  valueListenable: themeIsDark,
+                  builder: (_, dark, __) => _ToggleTile(
+                    label: 'Dark mode',
+                    description:
+                        'Toggle between dark and light themes for the whole app.',
+                    value: dark,
+                    onChanged: _toggleDarkMode,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 if (_timed.isNotEmpty) ...[
@@ -168,7 +142,7 @@ class _SectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       label,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 13,
         fontWeight: FontWeight.w700,
         color: AppColors.text,
@@ -209,7 +183,7 @@ class _ToggleTile extends StatelessWidget {
               children: [
                 Text(
                   label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
                     color: AppColors.text,
@@ -218,7 +192,7 @@ class _ToggleTile extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   description,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     color: AppColors.textSecondary,
                   ),
@@ -272,7 +246,7 @@ class _RepSettingTile extends StatelessWidget {
             children: [
               Text(
                 name,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
                   color: AppColors.text,
@@ -280,7 +254,7 @@ class _RepSettingTile extends StatelessWidget {
               ),
               Text(
                 '$sets × $reps reps',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                   color: AppColors.accent,
@@ -339,7 +313,7 @@ class _TimerSettingTile extends StatelessWidget {
             children: [
               Text(
                 name,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
                   color: AppColors.text,
@@ -347,7 +321,7 @@ class _TimerSettingTile extends StatelessWidget {
               ),
               Text(
                 _format(seconds),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                   color: AppColors.accent,

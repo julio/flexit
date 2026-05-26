@@ -30,6 +30,7 @@ class _TodayScreenState extends State<TodayScreen> {
   Timer? _ticker;
   int? _pRating;
   int? _alcoholYesterday;
+  int? _backPain;
   String _yesterdayKey = '';
 
   @override
@@ -54,6 +55,7 @@ class _TodayScreenState extends State<TodayScreen> {
     final startTime = await getStartTime(today);
     final pRating = await getPRating(today);
     final alcoholYesterday = await getAlcoholRating(yesterday);
+    final backPain = await getBackPainRating(today);
     final timers = <String, int>{};
     final reps = <String, int>{};
     for (final e in dailyBlocks.expand((b) => b.exercises)) {
@@ -85,6 +87,7 @@ class _TodayScreenState extends State<TodayScreen> {
         _finalElapsed = finalElapsed;
         _pRating = pRating;
         _alcoholYesterday = alcoholYesterday;
+        _backPain = backPain;
         _yesterdayKey = yesterday;
         _loading = false;
       });
@@ -104,6 +107,13 @@ class _TodayScreenState extends State<TodayScreen> {
     await setAlcoholRating(_yesterdayKey, value);
     HapticFeedback.lightImpact();
     if (mounted) setState(() => _alcoholYesterday = value);
+  }
+
+  Future<void> _setBackPain(int value) async {
+    final today = formatDate(DateTime.now());
+    await setBackPainRating(today, value);
+    HapticFeedback.lightImpact();
+    if (mounted) setState(() => _backPain = value);
   }
 
   void _updateTicker() {
@@ -136,16 +146,16 @@ class _TodayScreenState extends State<TodayScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.card,
-        title: const Text('Undo this completion?',
+        title: Text('Undo this completion?',
             style: TextStyle(color: AppColors.text, fontSize: 17)),
-        content: const Text(
+        content: Text(
           'You already marked this as done.',
           style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel',
+            child: Text('Cancel',
                 style: TextStyle(color: AppColors.textSecondary)),
           ),
           TextButton(
@@ -227,7 +237,7 @@ class _TodayScreenState extends State<TodayScreen> {
             expandedHeight: _streak > 0 ? 140 : 120,
             actions: [
               IconButton(
-                icon: const Icon(Icons.settings_outlined,
+                icon: Icon(Icons.settings_outlined,
                     color: AppColors.textSecondary),
                 onPressed: _openSettings,
                 tooltip: 'Settings',
@@ -239,8 +249,8 @@ class _TodayScreenState extends State<TodayScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Daily 15',
+                    Text(
+                      'Daily 30',
                       style: TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.w800,
@@ -252,14 +262,14 @@ class _TodayScreenState extends State<TodayScreen> {
                       children: [
                         Text(
                           '$completedCount/$totalExercises exercises',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 15,
                             color: AppColors.textSecondary,
                           ),
                         ),
                         Text(
                           ' \u00b7 ~$estimatedMinutes min',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 15,
                             color: AppColors.textSecondary,
                           ),
@@ -277,7 +287,7 @@ class _TodayScreenState extends State<TodayScreen> {
                         ),
                         child: Text(
                           '$_streak day streak',
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: AppColors.accent,
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
@@ -317,10 +327,19 @@ class _TodayScreenState extends State<TodayScreen> {
           ),
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
               child: _AlcoholCard(
                 value: _alcoholYesterday,
                 onSelect: _setAlcoholYesterday,
+              ),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+              child: _BackPainCard(
+                value: _backPain,
+                onSelect: _setBackPain,
               ),
             ),
           ),
@@ -355,7 +374,7 @@ class _TodayScreenState extends State<TodayScreen> {
                         _finalElapsed != null
                             ? 'Done in ${_formatElapsed(_finalElapsed!)}'
                             : 'All done for today',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: AppColors.success,
                           fontWeight: FontWeight.w700,
                           fontSize: 15,
@@ -439,7 +458,7 @@ class _BlockCard extends StatelessWidget {
                 ),
                 Text(
                   block.duration,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     color: AppColors.textSecondary,
                   ),
@@ -589,7 +608,7 @@ class _ExerciseCard extends StatelessWidget {
                     const SizedBox(height: 10),
                     Text(
                       exercise.description,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
                         color: AppColors.textSecondary,
                         height: 1.5,
@@ -598,7 +617,7 @@ class _ExerciseCard extends StatelessWidget {
                     const SizedBox(height: 8),
                     Text(
                       exercise.cue,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
                         color: AppColors.accent,
                         fontStyle: FontStyle.italic,
@@ -700,7 +719,7 @@ class _RunningClock extends StatelessWidget {
           const SizedBox(width: 8),
           Text(
             _formatElapsed(elapsed),
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.accent,
               fontWeight: FontWeight.w800,
               fontSize: 16,
@@ -934,7 +953,7 @@ class _SetCheckbox extends StatelessWidget {
             ? const Icon(Icons.check, color: Colors.white, size: 14)
             : Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
                   color: AppColors.textMuted,
@@ -975,7 +994,7 @@ class _PRatingCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'How was p today?',
                 style: TextStyle(
                   fontSize: 14,
@@ -986,7 +1005,7 @@ class _PRatingCard extends StatelessWidget {
               if (value != null)
                 Text(
                   _labels[value]!,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     color: AppColors.textSecondary,
                   ),
@@ -1044,7 +1063,7 @@ class _PRatingButton extends StatelessWidget {
         alignment: Alignment.center,
         child: Text(
           value > 0 ? '+$value' : '$value',
-          style: const TextStyle(
+          style: TextStyle(
             color: Colors.black87,
             fontSize: 15,
             fontWeight: FontWeight.w800,
@@ -1085,7 +1104,7 @@ class _AlcoholCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Drinks yesterday',
                 style: TextStyle(
                   fontSize: 14,
@@ -1096,7 +1115,7 @@ class _AlcoholCard extends StatelessWidget {
               if (value != null)
                 Text(
                   _labels[value]!,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     color: AppColors.textSecondary,
                   ),
@@ -1159,6 +1178,121 @@ class _AlcoholButton extends StatelessWidget {
           style: TextStyle(
             color: textColor,
             fontSize: 15,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BackPainCard extends StatelessWidget {
+  final int? value;
+  final ValueChanged<int> onSelect;
+
+  const _BackPainCard({required this.value, required this.onSelect});
+
+  static const _labels = {
+    0: 'none',
+    1: 'a twinge',
+    2: 'minor',
+    3: 'noticeable',
+    4: 'nagging',
+    5: 'moderate',
+    6: 'distracting',
+    7: 'bad',
+    8: 'very bad',
+    9: 'severe',
+    10: 'agony',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.cardBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Lower back pain',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.text,
+                ),
+              ),
+              if (value != null)
+                Text(
+                  '${value!} · ${_labels[value]!}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              for (var v = 0; v <= 10; v++) ...[
+                if (v != 0) const SizedBox(width: 4),
+                Expanded(
+                  child: _BackPainButton(
+                    level: v,
+                    selected: value == v,
+                    onTap: () => onSelect(v),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BackPainButton extends StatelessWidget {
+  final int level;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _BackPainButton({
+    required this.level,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final fill = AppColors.backPainColor(level);
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        height: 36,
+        decoration: BoxDecoration(
+          color: fill,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: selected ? AppColors.text : Colors.transparent,
+            width: 2,
+          ),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          '$level',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 13,
             fontWeight: FontWeight.w800,
           ),
         ),

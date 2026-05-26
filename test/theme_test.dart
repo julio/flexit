@@ -56,4 +56,47 @@ void main() {
       expect(AppColors.alcoholColor(99), AppColors.alcoholColor(4));
     });
   });
+
+  group('AppColors.backPainColor', () {
+    test('0 is light blue (the low-pain stop)', () {
+      expect(AppColors.backPainColor(0), const Color(0xFF93C5FD));
+    });
+
+    test('5 is red (the mid-pain stop)', () {
+      expect(AppColors.backPainColor(5), const Color(0xFFDC2626));
+    });
+
+    test('10 is dark purple (the high-pain stop)', () {
+      expect(AppColors.backPainColor(10), const Color(0xFF4C1D95));
+    });
+
+    test('clamps values below 0 to the level-0 color', () {
+      expect(AppColors.backPainColor(-99), AppColors.backPainColor(0));
+    });
+
+    test('clamps values above 10 to the level-10 color', () {
+      expect(AppColors.backPainColor(99), AppColors.backPainColor(10));
+    });
+
+    test('returns 11 distinct colors across 0..10', () {
+      final colors = List.generate(11, AppColors.backPainColor).toSet();
+      expect(colors.length, 11);
+    });
+  });
+
+  group('AppColors light/dark theme', () {
+    test('applyDark uses dark backgrounds', () {
+      AppColors.applyDark();
+      expect(AppColors.isDark, isTrue);
+      expect(AppColors.bg, const Color(0xFF0A0A0A));
+    });
+
+    test('applyLight uses light backgrounds', () {
+      AppColors.applyLight();
+      expect(AppColors.isDark, isFalse);
+      expect(AppColors.bg, const Color(0xFFFAFAFA));
+      // Restore for other tests.
+      AppColors.applyDark();
+    });
+  });
 }

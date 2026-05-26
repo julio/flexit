@@ -1,9 +1,23 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  static const bg = Color(0xFF0A0A0A);
-  static const card = Color(0xFF161616);
-  static const cardBorder = Color(0xFF252525);
+  // Dark palette
+  static const _darkBg = Color(0xFF0A0A0A);
+  static const _darkCard = Color(0xFF161616);
+  static const _darkCardBorder = Color(0xFF252525);
+  static const _darkText = Color(0xFFF5F5F5);
+  static const _darkTextSecondary = Color(0xFF999999);
+  static const _darkTextMuted = Color(0xFF555555);
+
+  // Light palette
+  static const _lightBg = Color(0xFFFAFAFA);
+  static const _lightCard = Color(0xFFFFFFFF);
+  static const _lightCardBorder = Color(0xFFE5E5E5);
+  static const _lightText = Color(0xFF1A1A1A);
+  static const _lightTextSecondary = Color(0xFF555555);
+  static const _lightTextMuted = Color(0xFFAAAAAA);
+
+  // Shared accents (work on both backgrounds).
   static const accent = Color(0xFFFF6B35);
   static const accentDim = Color(0x20FF6B35);
   static const success = Color(0xFF34D399);
@@ -12,15 +26,41 @@ class AppColors {
   static const missedDim = Color(0x20EF4444);
   static const warning = Color(0xFFFACC15);
   static const warningDim = Color(0x20FACC15);
-  static const text = Color(0xFFF5F5F5);
-  static const textSecondary = Color(0xFF999999);
-  static const textMuted = Color(0xFF555555);
+
+  // Mutable “current theme” slots. main.dart calls [applyDark] / [applyLight]
+  // and rebuilds the tree via a ValueListenableBuilder.
+  static Color bg = _darkBg;
+  static Color card = _darkCard;
+  static Color cardBorder = _darkCardBorder;
+  static Color text = _darkText;
+  static Color textSecondary = _darkTextSecondary;
+  static Color textMuted = _darkTextMuted;
+  static bool isDark = true;
+
+  static void applyDark() {
+    bg = _darkBg;
+    card = _darkCard;
+    cardBorder = _darkCardBorder;
+    text = _darkText;
+    textSecondary = _darkTextSecondary;
+    textMuted = _darkTextMuted;
+    isDark = true;
+  }
+
+  static void applyLight() {
+    bg = _lightBg;
+    card = _lightCard;
+    cardBorder = _lightCardBorder;
+    text = _lightText;
+    textSecondary = _lightTextSecondary;
+    textMuted = _lightTextMuted;
+    isDark = false;
+  }
 
   /// Maps a daily "p" rating in [-2, 2] to a heatmap color.
   /// 2 = white (excellent), -2 = red (horrible). Linear interpolation in RGB.
   static Color pColor(int value) {
     final clamped = value.clamp(-2, 2);
-    // t=0 at -2 (red), t=1 at 2 (white)
     final t = (clamped + 2) / 4.0;
     final channel = (255 * t).round();
     return Color.fromARGB(255, 255, channel, channel);
@@ -39,31 +79,58 @@ class AppColors {
     final i = level.clamp(1, 4) - 1;
     return _alcoholPalette[i];
   }
+
+  /// Lower-back pain heatmap, 0..10.
+  /// 0 = light blue, 5 = red, 10 = dark purple. Two linear segments.
+  static const _backPainStops = <Color>[
+    Color(0xFF93C5FD), // 0 light blue
+    Color(0xFFDC2626), // 5 red
+    Color(0xFF4C1D95), // 10 dark purple
+  ];
+
+  static Color backPainColor(int value) {
+    final v = value.clamp(0, 10);
+    if (v <= 5) {
+      return Color.lerp(_backPainStops[0], _backPainStops[1], v / 5.0)!;
+    }
+    return Color.lerp(_backPainStops[1], _backPainStops[2], (v - 5) / 5.0)!;
+  }
 }
 
-final appTheme = ThemeData(
-  brightness: Brightness.dark,
-  scaffoldBackgroundColor: AppColors.bg,
-  colorScheme: const ColorScheme.dark(
-    primary: AppColors.accent,
-    surface: AppColors.card,
-  ),
-  appBarTheme: const AppBarTheme(
-    backgroundColor: AppColors.bg,
-    elevation: 0,
-    scrolledUnderElevation: 0,
-    centerTitle: false,
-    titleTextStyle: TextStyle(
-      color: AppColors.text,
-      fontSize: 18,
-      fontWeight: FontWeight.w700,
+ThemeData buildAppTheme({required bool dark}) {
+  return ThemeData(
+    brightness: dark ? Brightness.dark : Brightness.light,
+    scaffoldBackgroundColor: AppColors.bg,
+    colorScheme: dark
+        ? const ColorScheme.dark(
+            primary: AppColors.accent,
+            surface: Color(0xFF161616),
+          )
+        : const ColorScheme.light(
+            primary: AppColors.accent,
+            surface: Color(0xFFFFFFFF),
+          ),
+    appBarTheme: AppBarTheme(
+      backgroundColor: AppColors.bg,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      centerTitle: false,
+      titleTextStyle: TextStyle(
+        color: AppColors.text,
+        fontSize: 18,
+        fontWeight: FontWeight.w700,
+      ),
+      iconTheme: IconThemeData(color: AppColors.text),
     ),
-  ),
-  bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-    backgroundColor: AppColors.bg,
-    selectedItemColor: AppColors.accent,
-    unselectedItemColor: AppColors.textMuted,
-    type: BottomNavigationBarType.fixed,
-    elevation: 0,
-  ),
-);
+    bottomNavigationBarTheme: BottomNavigationBarThemeData(
+      backgroundColor: AppColors.bg,
+      selectedItemColor: AppColors.accent,
+      unselectedItemColor: AppColors.textMuted,
+      type: BottomNavigationBarType.fixed,
+      elevation: 0,
+    ),
+  );
+}
+
+// Kept for backward compatibility with any older references.
+final appTheme = buildAppTheme(dark: true);

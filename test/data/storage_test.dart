@@ -431,43 +431,82 @@ void main() {
     });
   });
 
-  group('calendar visibility flags', () {
-    test('show p defaults to true', () async {
-      expect(await getCalendarShowP(), isTrue);
+  group('calendar measurement', () {
+    test('defaults to the first measurement (completion)', () async {
+      expect(await getCalendarMeasurement(), calendarMeasurements.first);
+      expect(calendarMeasurements.first, 'completion');
     });
 
-    test('show completion defaults to true', () async {
-      expect(await getCalendarShowCompletion(), isTrue);
+    test('persists across reads', () async {
+      await setCalendarMeasurement('p');
+      expect(await getCalendarMeasurement(), 'p');
+      await setCalendarMeasurement('backpain');
+      expect(await getCalendarMeasurement(), 'backpain');
     });
 
-    test('show p persists', () async {
-      await setCalendarShowP(false);
-      expect(await getCalendarShowP(), isFalse);
-      await setCalendarShowP(true);
-      expect(await getCalendarShowP(), isTrue);
+    test('falls back to default for unknown stored value', () async {
+      SharedPreferences.setMockInitialValues({
+        'flexit_calendar_measurement': 'bogus',
+      });
+      expect(await getCalendarMeasurement(), calendarMeasurements.first);
     });
 
-    test('show completion persists', () async {
-      await setCalendarShowCompletion(false);
-      expect(await getCalendarShowCompletion(), isFalse);
-      await setCalendarShowCompletion(true);
-      expect(await getCalendarShowCompletion(), isTrue);
+    test('all four measurements are present', () async {
+      expect(calendarMeasurements, ['completion', 'p', 'drinks', 'backpain']);
+    });
+  });
+
+  group('dark mode', () {
+    test('defaults to true', () async {
+      expect(await getDarkMode(), isTrue);
     });
 
-    test('flags are independent', () async {
-      await setCalendarShowP(false);
-      await setCalendarShowCompletion(true);
-      expect(await getCalendarShowP(), isFalse);
-      expect(await getCalendarShowCompletion(), isTrue);
+    test('persists', () async {
+      await setDarkMode(false);
+      expect(await getDarkMode(), isFalse);
+      await setDarkMode(true);
+      expect(await getDarkMode(), isTrue);
+    });
+  });
+
+  group('back pain ratings', () {
+    test('returns null when no rating saved', () async {
+      expect(await getBackPainRating('2026-05-25'), isNull);
     });
 
-    test('show alcohol defaults to true', () async {
-      expect(await getCalendarShowAlcohol(), isTrue);
+    test('saves and retrieves a rating across the full 0..10 range', () async {
+      for (var v = 0; v <= 10; v++) {
+        await setBackPainRating('2026-05-25', v);
+        expect(await getBackPainRating('2026-05-25'), v);
+      }
     });
 
-    test('show alcohol persists', () async {
-      await setCalendarShowAlcohol(false);
-      expect(await getCalendarShowAlcohol(), isFalse);
+    test('zero is a valid (and distinct from null) rating', () async {
+      await setBackPainRating('2026-05-25', 0);
+      expect(await getBackPainRating('2026-05-25'), 0);
+    });
+
+    test('getAllBackPainRatings returns map keyed by date', () async {
+      await setBackPainRating('2026-05-23', 0);
+      await setBackPainRating('2026-05-24', 5);
+      await setBackPainRating('2026-05-25', 10);
+      final all = await getAllBackPainRatings();
+      expect(all, {
+        '2026-05-23': 0,
+        '2026-05-24': 5,
+        '2026-05-25': 10,
+      });
+    });
+
+    test('getAllBackPainRatings ignores unrelated keys', () async {
+      SharedPreferences.setMockInitialValues({
+        'flexit_bp_2026-05-25': 3,
+        'flexit_p_2026-05-25': 1,
+        'flexit_alc_2026-05-25': 2,
+        'flexit_timer_plank': 60,
+      });
+      final all = await getAllBackPainRatings();
+      expect(all, {'2026-05-25': 3});
     });
   });
 

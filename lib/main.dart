@@ -1,18 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'data/storage.dart';
 import 'screens/today_screen.dart';
 import 'screens/calendar_screen.dart';
 import 'services/notifications.dart';
 import 'theme.dart';
 
+/// Global notifier so any screen can flip the theme and the app rebuilds.
+final ValueNotifier<bool> themeIsDark = ValueNotifier<bool>(true);
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-    statusBarBrightness: Brightness.dark,
-    statusBarIconBrightness: Brightness.light,
-  ));
+  final dark = await getDarkMode();
+  themeIsDark.value = dark;
+  if (dark) {
+    AppColors.applyDark();
+  } else {
+    AppColors.applyLight();
+  }
   await TimerNotifications.instance.init();
   runApp(const FlexItApp());
+}
+
+void _applyStatusBarStyle(bool dark) {
+  SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarBrightness: dark ? Brightness.dark : Brightness.light,
+    statusBarIconBrightness: dark ? Brightness.light : Brightness.dark,
+  ));
 }
 
 class FlexItApp extends StatelessWidget {
@@ -20,11 +35,22 @@ class FlexItApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'FlexIt',
-      theme: appTheme,
-      debugShowCheckedModeBanner: false,
-      home: const HomeShell(),
+    return ValueListenableBuilder<bool>(
+      valueListenable: themeIsDark,
+      builder: (_, dark, __) {
+        if (dark) {
+          AppColors.applyDark();
+        } else {
+          AppColors.applyLight();
+        }
+        _applyStatusBarStyle(dark);
+        return MaterialApp(
+          title: 'FlexIt',
+          theme: buildAppTheme(dark: dark),
+          debugShowCheckedModeBanner: false,
+          home: const HomeShell(),
+        );
+      },
     );
   }
 }
@@ -51,7 +77,7 @@ class _HomeShellState extends State<HomeShell> {
         ],
       ),
       bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           border: Border(top: BorderSide(color: AppColors.cardBorder)),
         ),
         child: BottomNavigationBar(

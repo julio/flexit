@@ -18,9 +18,8 @@ class CalendarScreenState extends State<CalendarScreen> {
   Map<String, Set<String>> _exercisesByDate = {};
   Map<String, int> _pRatings = {};
   Map<String, int> _alcoholRatings = {};
-  bool _showP = true;
-  bool _showCompletion = true;
-  bool _showAlcohol = true;
+  Map<String, int> _backPainRatings = {};
+  String _measurement = calendarMeasurements.first;
   DateTime _focusedMonth = DateTime.now();
   String? _selectedDate;
   Set<String> _selectedDateExercises = {};
@@ -36,20 +35,27 @@ class CalendarScreenState extends State<CalendarScreen> {
     final exercisesByDate = await getAllCompletedExercises();
     final pRatings = await getAllPRatings();
     final alcoholRatings = await getAllAlcoholRatings();
-    final showP = await getCalendarShowP();
-    final showCompletion = await getCalendarShowCompletion();
-    final showAlcohol = await getCalendarShowAlcohol();
+    final backPainRatings = await getAllBackPainRatings();
+    final measurement = await getCalendarMeasurement();
     if (mounted) {
       setState(() {
         _sessions = sessions;
         _exercisesByDate = exercisesByDate;
         _pRatings = pRatings;
         _alcoholRatings = alcoholRatings;
-        _showP = showP;
-        _showCompletion = showCompletion;
-        _showAlcohol = showAlcohol;
+        _backPainRatings = backPainRatings;
+        _measurement = measurement;
       });
     }
+  }
+
+  Future<void> _cycleMeasurement(int delta) async {
+    final i = calendarMeasurements.indexOf(_measurement);
+    final next = calendarMeasurements[
+        (i + delta + calendarMeasurements.length) %
+            calendarMeasurements.length];
+    setState(() => _measurement = next);
+    await setCalendarMeasurement(next);
   }
 
   Future<void> _selectDate(String dateStr) async {
@@ -77,6 +83,15 @@ class CalendarScreenState extends State<CalendarScreen> {
     await setAlcoholRating(date, value);
     if (mounted) {
       setState(() => _alcoholRatings = {..._alcoholRatings, date: value});
+    }
+  }
+
+  Future<void> _setSelectedBackPain(int value) async {
+    final date = _selectedDate;
+    if (date == null) return;
+    await setBackPainRating(date, value);
+    if (mounted) {
+      setState(() => _backPainRatings = {..._backPainRatings, date: value});
     }
   }
 
@@ -153,7 +168,7 @@ class CalendarScreenState extends State<CalendarScreen> {
         title: const Text('Calendar'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings_outlined,
+            icon: Icon(Icons.settings_outlined,
                 color: AppColors.textSecondary),
             tooltip: 'Settings',
             onPressed: () async {
@@ -181,7 +196,17 @@ class CalendarScreenState extends State<CalendarScreen> {
               _StatBox(label: 'Total\nSessions', value: '$totalSessions'),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
+
+          // Measurement switcher — tap or swipe the pill to cycle through
+          // completion / p / drinks / back pain. Only one is rendered on the
+          // grid at a time.
+          _MeasurementPill(
+            measurement: _measurement,
+            onPrev: () => _cycleMeasurement(-1),
+            onNext: () => _cycleMeasurement(1),
+          ),
+          const SizedBox(height: 12),
 
           // Calendar
           Container(
@@ -210,7 +235,7 @@ class CalendarScreenState extends State<CalendarScreen> {
                       ),
                       Text(
                         _monthName(_focusedMonth),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w700,
                           color: AppColors.text,
@@ -238,7 +263,7 @@ class CalendarScreenState extends State<CalendarScreen> {
                               child: Center(
                                 child: Text(
                                   d,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w600,
                                     color: AppColors.textMuted,
@@ -267,7 +292,7 @@ class CalendarScreenState extends State<CalendarScreen> {
           ],
 
           const SizedBox(height: 24),
-          const Text(
+          Text(
             'RECENT SESSIONS',
             style: TextStyle(
               fontSize: 13,
@@ -279,9 +304,9 @@ class CalendarScreenState extends State<CalendarScreen> {
           const SizedBox(height: 12),
 
           if (recentSessions.isEmpty)
-            const Center(
+            Center(
               child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 20),
+                padding: const EdgeInsets.symmetric(vertical: 20),
                 child: Text(
                   'No sessions yet. Complete your first workout!',
                   style: TextStyle(color: AppColors.textMuted, fontSize: 14),
@@ -305,7 +330,7 @@ class CalendarScreenState extends State<CalendarScreen> {
                         children: [
                           Text(
                             _formatDisplayDate(s.date),
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: AppColors.text,
                               fontSize: 15,
                               fontWeight: FontWeight.w600,
@@ -316,11 +341,11 @@ class CalendarScreenState extends State<CalendarScreen> {
                             [
                               s.type == 'weekend'
                                   ? 'Weekend deep session'
-                                  : 'Daily 15',
+                                  : 'Daily 30',
                               if (s.duration != null)
                                 _formatDuration(s.duration!),
                             ].join(' · '),
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: AppColors.textSecondary,
                               fontSize: 12,
                             ),
@@ -331,7 +356,7 @@ class CalendarScreenState extends State<CalendarScreen> {
                         children: [
                           Text(
                             _formatTime(s.completedAt),
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: AppColors.textSecondary,
                               fontSize: 13,
                             ),
@@ -391,32 +416,65 @@ class CalendarScreenState extends State<CalendarScreen> {
         isPartial = total > 0 && done * 2 >= total;
       }
 
-      final rating = _pRatings[dateStr];
-      final ratingBg =
-          (_showP && rating != null) ? AppColors.pColor(rating) : null;
-      final completionDayColor = _showCompletion
-          ? (isCompleted
-              ? AppColors.success
-              : isPartial
-                  ? AppColors.warning
-                  : isMissed
-                      ? AppColors.missed
-                      : isToday
-                          ? AppColors.accent
-                          : isFuture
-                              ? AppColors.textMuted
-                              : AppColors.text)
-          : (isFuture ? AppColors.textMuted : AppColors.text);
-      // On a rated (light/red) background, use dark text for legibility.
-      final dayColor = ratingBg != null ? Colors.black87 : completionDayColor;
-      final boldDay =
-          _showCompletion && (isToday || isCompleted);
+      // Pick a fill color and accessory icon based on the active measurement.
+      Color? cellFill;
+      Widget? accessory;
+      switch (_measurement) {
+        case 'completion':
+          if (isCompleted) {
+            accessory = const Icon(Icons.check_circle,
+                color: AppColors.success, size: 14);
+          } else if (isPartial) {
+            accessory = const Icon(Icons.error,
+                color: AppColors.warning, size: 14);
+          } else if (isMissed) {
+            accessory = const Icon(Icons.cancel,
+                color: AppColors.missed, size: 14);
+          } else if (isToday) {
+            accessory = Icon(Icons.radio_button_unchecked,
+                color: AppColors.accent.withValues(alpha: 0.6), size: 14);
+          }
+          break;
+        case 'p':
+          final pv = _pRatings[dateStr];
+          if (pv != null) cellFill = AppColors.pColor(pv);
+          break;
+        case 'drinks':
+          final av = _alcoholRatings[dateStr];
+          if (av != null && av > 0) cellFill = AppColors.alcoholColor(av);
+          break;
+        case 'backpain':
+          final bv = _backPainRatings[dateStr];
+          if (bv != null) cellFill = AppColors.backPainColor(bv);
+          break;
+      }
 
-      final alcoholLevel = _alcoholRatings[dateStr];
-      final alcoholDot =
-          (_showAlcohol && alcoholLevel != null && alcoholLevel > 0)
-              ? AppColors.alcoholColor(alcoholLevel)
-              : null;
+      final Color dayColor;
+      if (cellFill != null) {
+        // Rated cells: pick legible text for the fill brightness.
+        dayColor = ThemeData.estimateBrightnessForColor(cellFill) ==
+                Brightness.dark
+            ? Colors.white
+            : Colors.black87;
+      } else if (isFuture) {
+        dayColor = AppColors.textMuted;
+      } else if (_measurement == 'completion') {
+        if (isCompleted) {
+          dayColor = AppColors.success;
+        } else if (isPartial) {
+          dayColor = AppColors.warning;
+        } else if (isMissed) {
+          dayColor = AppColors.missed;
+        } else if (isToday) {
+          dayColor = AppColors.accent;
+        } else {
+          dayColor = AppColors.text;
+        }
+      } else {
+        dayColor = isToday ? AppColors.accent : AppColors.text;
+      }
+      final boldDay =
+          _measurement == 'completion' && (isToday || isCompleted);
 
       cells.add(
         GestureDetector(
@@ -424,57 +482,28 @@ class CalendarScreenState extends State<CalendarScreen> {
           child: Container(
             margin: const EdgeInsets.all(2),
             decoration: BoxDecoration(
-              color: ratingBg,
+              color: cellFill,
               borderRadius: BorderRadius.circular(8),
               border: isSelected
                   ? Border.all(color: AppColors.accent, width: 2)
                   : null,
             ),
-            child: Stack(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      '$day',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight:
-                            boldDay ? FontWeight.w700 : FontWeight.w400,
-                        color: dayColor,
-                      ),
-                    ),
-                    const SizedBox(height: 1),
-                    if (_showCompletion && isCompleted)
-                      const Icon(Icons.check_circle,
-                          color: AppColors.success, size: 14)
-                    else if (_showCompletion && isPartial)
-                      const Icon(Icons.error,
-                          color: AppColors.warning, size: 14)
-                    else if (_showCompletion && isMissed)
-                      const Icon(Icons.cancel,
-                          color: AppColors.missed, size: 14)
-                    else if (_showCompletion && isToday)
-                      Icon(Icons.radio_button_unchecked,
-                          color: AppColors.accent.withValues(alpha: 0.6),
-                          size: 14)
-                    else
-                      const SizedBox(height: 14),
-                  ],
-                ),
-                if (alcoholDot != null)
-                  Positioned(
-                    top: 3,
-                    right: 3,
-                    child: Container(
-                      width: 7,
-                      height: 7,
-                      decoration: BoxDecoration(
-                        color: alcoholDot,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
+                Text(
+                  '$day',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: boldDay ? FontWeight.w700 : FontWeight.w400,
+                    color: dayColor,
                   ),
+                ),
+                const SizedBox(height: 1),
+                if (accessory != null)
+                  accessory
+                else
+                  const SizedBox(height: 14),
               ],
             ),
           ),
@@ -524,7 +553,7 @@ class CalendarScreenState extends State<CalendarScreen> {
         children: [
           Text(
             _formatDisplayDate(date),
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.text,
               fontSize: 15,
               fontWeight: FontWeight.w600,
@@ -537,22 +566,21 @@ class CalendarScreenState extends State<CalendarScreen> {
                 'Completed at ${_formatTime(selectedSession.completedAt)}',
                 selectedSession.type == 'weekend'
                     ? 'Weekend deep session'
-                    : 'Daily 15',
+                    : 'Daily 30',
                 if (selectedSession.duration != null)
                   'took ${_formatDuration(selectedSession.duration!)}',
               ].join(' · '),
-              style: const TextStyle(color: AppColors.success, fontSize: 13),
+              style: TextStyle(color: AppColors.success, fontSize: 13),
             )
           else if (isToday)
             Text(
               hasExerciseData
                   ? 'In progress · $completedCount/$totalAtomic done'
                   : 'In progress',
-              style:
-                  const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
             )
           else if (isFuture)
-            const Text(
+            Text(
               'Future',
               style: TextStyle(color: AppColors.textMuted, fontSize: 13),
             )
@@ -561,7 +589,7 @@ class CalendarScreenState extends State<CalendarScreen> {
               hasExerciseData
                   ? 'Missed · $completedCount/$totalAtomic done'
                   : 'Missed',
-              style: const TextStyle(color: AppColors.missed, fontSize: 13),
+              style: TextStyle(color: AppColors.missed, fontSize: 13),
             ),
           if (editable) ...[
             const SizedBox(height: 14),
@@ -573,6 +601,11 @@ class CalendarScreenState extends State<CalendarScreen> {
             _CompactAlcohol(
               value: _alcoholRatings[date],
               onSelect: _setSelectedAlcohol,
+            ),
+            const SizedBox(height: 10),
+            _CompactBackPain(
+              value: _backPainRatings[date],
+              onSelect: _setSelectedBackPain,
             ),
           ],
           if (editable || hasExerciseData) ...[
@@ -702,7 +735,7 @@ class _CompactPRating extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
+            Text(
               'P',
               style: TextStyle(
                 fontSize: 12,
@@ -714,7 +747,7 @@ class _CompactPRating extends StatelessWidget {
             if (value != null)
               Text(
                 _labels[value]!,
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 11, color: AppColors.textSecondary),
               ),
           ],
@@ -741,7 +774,7 @@ class _CompactPRating extends StatelessWidget {
                     alignment: Alignment.center,
                     child: Text(
                       v > 0 ? '+$v' : '$v',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.black87,
                         fontSize: 13,
                         fontWeight: FontWeight.w800,
@@ -781,7 +814,7 @@ class _CompactAlcohol extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
+            Text(
               'DRINKS',
               style: TextStyle(
                 fontSize: 12,
@@ -793,7 +826,7 @@ class _CompactAlcohol extends StatelessWidget {
             if (value != null)
               Text(
                 _labels[value]!,
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 11, color: AppColors.textSecondary),
               ),
           ],
@@ -825,6 +858,157 @@ class _CompactAlcohol extends StatelessWidget {
                             ? AppColors.textSecondary
                             : Colors.black87,
                         fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _MeasurementPill extends StatelessWidget {
+  final String measurement;
+  final VoidCallback onPrev;
+  final VoidCallback onNext;
+
+  const _MeasurementPill({
+    required this.measurement,
+    required this.onPrev,
+    required this.onNext,
+  });
+
+  static const _labels = {
+    'completion': 'Completion',
+    'p': 'p rating',
+    'drinks': 'Drinks',
+    'backpain': 'Back pain',
+  };
+
+  static const _icons = {
+    'completion': Icons.check_circle_outline,
+    'p': Icons.local_fire_department_outlined,
+    'drinks': Icons.local_bar_outlined,
+    'backpain': Icons.healing_outlined,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onHorizontalDragEnd: (details) {
+        final v = details.primaryVelocity ?? 0;
+        if (v < -250) {
+          onNext();
+        } else if (v > 250) {
+          onPrev();
+        }
+      },
+      child: Container(
+        height: 44,
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: AppColors.cardBorder),
+        ),
+        child: Row(
+          children: [
+            IconButton(
+              icon: Icon(Icons.chevron_left, color: AppColors.accent),
+              tooltip: 'Previous',
+              onPressed: onPrev,
+            ),
+            Expanded(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(_icons[measurement] ?? Icons.circle_outlined,
+                      color: AppColors.textSecondary, size: 16),
+                  const SizedBox(width: 8),
+                  Text(
+                    _labels[measurement] ?? measurement,
+                    style: TextStyle(
+                      color: AppColors.text,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              icon: Icon(Icons.chevron_right, color: AppColors.accent),
+              tooltip: 'Next',
+              onPressed: onNext,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CompactBackPain extends StatelessWidget {
+  final int? value;
+  final ValueChanged<int> onSelect;
+
+  const _CompactBackPain({required this.value, required this.onSelect});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'BACK PAIN',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+                letterSpacing: 0.5,
+              ),
+            ),
+            if (value != null)
+              Text(
+                '${value!}',
+                style: TextStyle(
+                    fontSize: 11, color: AppColors.textSecondary),
+              ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            for (var v = 0; v <= 10; v++) ...[
+              if (v != 0) const SizedBox(width: 3),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => onSelect(v),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 120),
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: AppColors.backPainColor(v),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: value == v ? AppColors.text : Colors.transparent,
+                        width: 2,
+                      ),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      '$v',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -874,7 +1058,7 @@ class _StatBox extends StatelessWidget {
             Text(
               label,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 10,
                 color: AppColors.textSecondary,
                 letterSpacing: 0.3,

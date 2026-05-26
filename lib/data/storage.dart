@@ -9,9 +9,13 @@ const _repsPrefix = 'flexit_reps_';
 const _startPrefix = 'flexit_start_';
 const _pRatingPrefix = 'flexit_p_';
 const _alcoholPrefix = 'flexit_alc_';
-const _calendarShowPKey = 'flexit_calendar_show_p';
-const _calendarShowCompletionKey = 'flexit_calendar_show_completion';
-const _calendarShowAlcoholKey = 'flexit_calendar_show_alcohol';
+const _backPainPrefix = 'flexit_bp_';
+const _calendarMeasurementKey = 'flexit_calendar_measurement';
+const _darkModeKey = 'flexit_dark_mode';
+
+/// Which single measurement the calendar should render. The order is also the
+/// swipe order (right = next, left = previous).
+const calendarMeasurements = ['completion', 'p', 'drinks', 'backpain'];
 
 Future<List<Session>> getSessions() async {
   final prefs = await SharedPreferences.getInstance();
@@ -149,34 +153,51 @@ Future<Map<String, int>> getAllAlcoholRatings() async {
   return result;
 }
 
-Future<bool> getCalendarShowAlcohol() async {
+Future<int?> getBackPainRating(String date) async {
   final prefs = await SharedPreferences.getInstance();
-  return prefs.getBool(_calendarShowAlcoholKey) ?? true;
+  return prefs.getInt('$_backPainPrefix$date');
 }
 
-Future<void> setCalendarShowAlcohol(bool value) async {
+Future<void> setBackPainRating(String date, int value) async {
+  assert(value >= 0 && value <= 10, 'back pain rating must be in [0, 10]');
   final prefs = await SharedPreferences.getInstance();
-  await prefs.setBool(_calendarShowAlcoholKey, value);
+  await prefs.setInt('$_backPainPrefix$date', value);
 }
 
-Future<bool> getCalendarShowP() async {
+Future<Map<String, int>> getAllBackPainRatings() async {
   final prefs = await SharedPreferences.getInstance();
-  return prefs.getBool(_calendarShowPKey) ?? true;
+  final result = <String, int>{};
+  for (final key in prefs.getKeys()) {
+    if (!key.startsWith(_backPainPrefix)) continue;
+    final value = prefs.getInt(key);
+    if (value == null) continue;
+    result[key.substring(_backPainPrefix.length)] = value;
+  }
+  return result;
 }
 
-Future<void> setCalendarShowP(bool value) async {
+Future<String> getCalendarMeasurement() async {
   final prefs = await SharedPreferences.getInstance();
-  await prefs.setBool(_calendarShowPKey, value);
+  final raw = prefs.getString(_calendarMeasurementKey);
+  if (raw != null && calendarMeasurements.contains(raw)) return raw;
+  return calendarMeasurements.first;
 }
 
-Future<bool> getCalendarShowCompletion() async {
+Future<void> setCalendarMeasurement(String value) async {
+  assert(calendarMeasurements.contains(value),
+      'unknown calendar measurement: $value');
   final prefs = await SharedPreferences.getInstance();
-  return prefs.getBool(_calendarShowCompletionKey) ?? true;
+  await prefs.setString(_calendarMeasurementKey, value);
 }
 
-Future<void> setCalendarShowCompletion(bool value) async {
+Future<bool> getDarkMode() async {
   final prefs = await SharedPreferences.getInstance();
-  await prefs.setBool(_calendarShowCompletionKey, value);
+  return prefs.getBool(_darkModeKey) ?? true;
+}
+
+Future<void> setDarkMode(bool value) async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setBool(_darkModeKey, value);
 }
 
 Future<int> getRepsCount(String settingKey, int defaultReps) async {
