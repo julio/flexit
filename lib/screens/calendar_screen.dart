@@ -530,7 +530,7 @@ class CalendarScreenState extends State<CalendarScreen> {
           break;
         case 'drinks':
           final av = _alcoholRatings[dateStr];
-          if (av != null && av > 0) cellFill = AppColors.alcoholColor(av);
+          if (av != null) cellFill = AppColors.alcoholColor(av);
           break;
         case 'backpain':
           final bv = _backPainRatings[dateStr];
@@ -917,7 +917,7 @@ class _CompactAlcohol extends StatelessWidget {
                     duration: const Duration(milliseconds: 120),
                     height: 32,
                     decoration: BoxDecoration(
-                      color: AppColors.alcoholColor(v) ?? AppColors.cardBorder,
+                      color: AppColors.alcoholColor(v),
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
                         color: value == v ? AppColors.text : Colors.transparent,
@@ -927,10 +927,8 @@ class _CompactAlcohol extends StatelessWidget {
                     alignment: Alignment.center,
                     child: Text(
                       '$v',
-                      style: TextStyle(
-                        color: v == 0
-                            ? AppColors.textSecondary
-                            : Colors.black87,
+                      style: const TextStyle(
+                        color: Colors.black87,
                         fontSize: 13,
                         fontWeight: FontWeight.w800,
                       ),

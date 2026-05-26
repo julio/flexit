@@ -38,18 +38,17 @@ void main() {
   });
 
   group('AppColors.alcoholColor', () {
-    test('level 0 returns null (no marker)', () {
-      expect(AppColors.alcoholColor(0), isNull);
+    test('level 0 is white (no drinks)', () {
+      expect(AppColors.alcoholColor(0), const Color(0xFFFFFFFF));
     });
 
-    test('negative levels return null', () {
-      expect(AppColors.alcoholColor(-1), isNull);
+    test('clamps negative levels to the level-0 color (white)', () {
+      expect(AppColors.alcoholColor(-1), AppColors.alcoholColor(0));
     });
 
-    test('levels 1..4 return distinct colors', () {
-      final colors = [1, 2, 3, 4].map(AppColors.alcoholColor).toSet();
-      expect(colors.length, 4);
-      expect(colors.contains(null), isFalse);
+    test('levels 0..4 return five distinct colors', () {
+      final colors = [0, 1, 2, 3, 4].map(AppColors.alcoholColor).toSet();
+      expect(colors.length, 5);
     });
 
     test('clamps levels above 4 to the level-4 color', () {

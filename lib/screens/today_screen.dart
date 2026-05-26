@@ -1156,9 +1156,8 @@ class _AlcoholButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fill = AppColors.alcoholColor(level);
-    final bg = fill ?? AppColors.cardBorder;
-    final textColor = level == 0 ? AppColors.textSecondary : Colors.black87;
+    final bg = AppColors.alcoholColor(level);
+    final textColor = Colors.black87;
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(

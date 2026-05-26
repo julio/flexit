@@ -66,17 +66,18 @@ class AppColors {
     return Color.fromARGB(255, 255, channel, channel);
   }
 
-  /// Marker color for alcohol level (1..4). Level 0 has no marker.
+  /// Fill color for alcohol level (0..4). 0 is white (no drinks — a clean
+  /// day still paints the cell so the calendar reads at a glance).
   static const _alcoholPalette = <Color>[
+    Color(0xFFFFFFFF), // 0 none
     Color(0xFFE9C46A), // 1 sip
     Color(0xFFE39B3B), // 2 a glass
     Color(0xFFD45A1A), // 3 a few glasses
     Color(0xFF8B1E1E), // 4 drunk
   ];
 
-  static Color? alcoholColor(int level) {
-    if (level <= 0) return null;
-    final i = level.clamp(1, 4) - 1;
+  static Color alcoholColor(int level) {
+    final i = level.clamp(0, 4);
     return _alcoholPalette[i];
   }
 
