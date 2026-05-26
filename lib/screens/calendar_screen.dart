@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../data/exercises.dart';
 import '../data/storage.dart';
 import '../models/exercise.dart';
@@ -93,6 +94,97 @@ class CalendarScreenState extends State<CalendarScreen> {
     if (mounted) {
       setState(() => _backPainRatings = {..._backPainRatings, date: value});
     }
+  }
+
+  /// Long-press shortcut on a day cell: pop a sheet with just the value
+  /// selector for the currently-active measurement.
+  Future<void> _quickEditForDate(String dateStr) async {
+    HapticFeedback.mediumImpact();
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.card,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetCtx) {
+        return StatefulBuilder(
+          builder: (innerCtx, setSheetState) {
+            Widget body;
+            switch (_measurement) {
+              case 'p':
+                body = _CompactPRating(
+                  value: _pRatings[dateStr],
+                  onSelect: (v) async {
+                    await setPRating(dateStr, v);
+                    setSheetState(() {});
+                    setState(() => _pRatings = {..._pRatings, dateStr: v});
+                  },
+                );
+                break;
+              case 'drinks':
+                body = _CompactAlcohol(
+                  value: _alcoholRatings[dateStr],
+                  onSelect: (v) async {
+                    await setAlcoholRating(dateStr, v);
+                    setSheetState(() {});
+                    setState(() =>
+                        _alcoholRatings = {..._alcoholRatings, dateStr: v});
+                  },
+                );
+                break;
+              case 'backpain':
+                body = _CompactBackPain(
+                  value: _backPainRatings[dateStr],
+                  onSelect: (v) async {
+                    await setBackPainRating(dateStr, v);
+                    setSheetState(() {});
+                    setState(() =>
+                        _backPainRatings = {..._backPainRatings, dateStr: v});
+                  },
+                );
+                break;
+              default:
+                body = const SizedBox.shrink();
+            }
+            return Padding(
+              padding: EdgeInsets.fromLTRB(
+                20,
+                14,
+                20,
+                20 + MediaQuery.of(innerCtx).viewInsets.bottom,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 36,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 14),
+                      decoration: BoxDecoration(
+                        color: AppColors.cardBorder,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  Text(
+                    _formatDisplayDate(dateStr),
+                    style: TextStyle(
+                      color: AppColors.text,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  body,
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   Future<void> _toggleSelectedExercise(Exercise exercise) async {
@@ -416,23 +508,20 @@ class CalendarScreenState extends State<CalendarScreen> {
         isPartial = total > 0 && done * 2 >= total;
       }
 
-      // Pick a fill color and accessory icon based on the active measurement.
+      // Pick a fill color for the cell based on the active measurement.
+      // Every measurement now paints the cell — completion uses the same
+      // treatment as p / drinks / back pain so the visual language matches.
       Color? cellFill;
-      Widget? accessory;
       switch (_measurement) {
         case 'completion':
           if (isCompleted) {
-            accessory = const Icon(Icons.check_circle,
-                color: AppColors.success, size: 14);
+            cellFill = AppColors.success;
           } else if (isPartial) {
-            accessory = const Icon(Icons.error,
-                color: AppColors.warning, size: 14);
+            cellFill = AppColors.warning;
           } else if (isMissed) {
-            accessory = const Icon(Icons.cancel,
-                color: AppColors.missed, size: 14);
+            cellFill = AppColors.missed;
           } else if (isToday) {
-            accessory = Icon(Icons.radio_button_unchecked,
-                color: AppColors.accent.withValues(alpha: 0.6), size: 14);
+            cellFill = AppColors.accent;
           }
           break;
         case 'p':
@@ -451,34 +540,28 @@ class CalendarScreenState extends State<CalendarScreen> {
 
       final Color dayColor;
       if (cellFill != null) {
-        // Rated cells: pick legible text for the fill brightness.
+        // Painted cell: pick legible text for the fill brightness.
         dayColor = ThemeData.estimateBrightnessForColor(cellFill) ==
                 Brightness.dark
             ? Colors.white
             : Colors.black87;
       } else if (isFuture) {
         dayColor = AppColors.textMuted;
-      } else if (_measurement == 'completion') {
-        if (isCompleted) {
-          dayColor = AppColors.success;
-        } else if (isPartial) {
-          dayColor = AppColors.warning;
-        } else if (isMissed) {
-          dayColor = AppColors.missed;
-        } else if (isToday) {
-          dayColor = AppColors.accent;
-        } else {
-          dayColor = AppColors.text;
-        }
       } else {
         dayColor = isToday ? AppColors.accent : AppColors.text;
       }
-      final boldDay =
-          _measurement == 'completion' && (isToday || isCompleted);
+      final boldDay = isToday || (cellFill != null);
 
       cells.add(
         GestureDetector(
           onTap: () => _selectDate(dateStr),
+          // Long-press jumps straight to the value editor for the active
+          // measurement (no need to open the full past-day editor). Disabled
+          // for completion (use tap → per-exercise toggles instead) and for
+          // future days.
+          onLongPress: (_measurement == 'completion' || isFuture)
+              ? null
+              : () => _quickEditForDate(dateStr),
           child: Container(
             margin: const EdgeInsets.all(2),
             decoration: BoxDecoration(
@@ -488,23 +571,14 @@ class CalendarScreenState extends State<CalendarScreen> {
                   ? Border.all(color: AppColors.accent, width: 2)
                   : null,
             ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  '$day',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: boldDay ? FontWeight.w700 : FontWeight.w400,
-                    color: dayColor,
-                  ),
-                ),
-                const SizedBox(height: 1),
-                if (accessory != null)
-                  accessory
-                else
-                  const SizedBox(height: 14),
-              ],
+            alignment: Alignment.center,
+            child: Text(
+              '$day',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: boldDay ? FontWeight.w700 : FontWeight.w400,
+                color: dayColor,
+              ),
             ),
           ),
         ),
