@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'exercises.dart';
 import '../models/session.dart';
 
 const _sessionsKey = 'flexit_sessions';
@@ -12,6 +13,7 @@ const _alcoholPrefix = 'flexit_alc_';
 const _backPainPrefix = 'flexit_bp_';
 const _calendarMeasurementKey = 'flexit_calendar_measurement';
 const _darkModeKey = 'flexit_dark_mode';
+const _routineKey = 'flexit_routine';
 
 /// Which single measurement the calendar should render. The order is also the
 /// swipe order (right = next, left = previous).
@@ -198,6 +200,19 @@ Future<bool> getDarkMode() async {
 Future<void> setDarkMode(bool value) async {
   final prefs = await SharedPreferences.getInstance();
   await prefs.setBool(_darkModeKey, value);
+}
+
+Future<String> getActiveRoutineId() async {
+  final prefs = await SharedPreferences.getInstance();
+  final raw = prefs.getString(_routineKey);
+  if (raw != null && routines.any((r) => r.id == raw)) return raw;
+  return defaultRoutineId;
+}
+
+Future<void> setActiveRoutineId(String id) async {
+  assert(routines.any((r) => r.id == id), 'unknown routine: $id');
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setString(_routineKey, id);
 }
 
 Future<int> getRepsCount(String settingKey, int defaultReps) async {

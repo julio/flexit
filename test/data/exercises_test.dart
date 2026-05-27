@@ -123,4 +123,75 @@ void main() {
       expect(pushUps.reps!.maxReps, 50);
     });
   });
+
+  group('routines', () {
+    test('exposes Daily 30 and Hip & Lumbar Reset', () {
+      final ids = routines.map((r) => r.id).toSet();
+      expect(ids, {daily30RoutineId, hipLumbarResetRoutineId});
+    });
+
+    test('default routine is Hip & Lumbar Reset', () {
+      expect(defaultRoutineId, hipLumbarResetRoutineId);
+    });
+
+    test('routineById falls back to first routine for unknown ids', () {
+      expect(routineById('not-a-routine').id, routines.first.id);
+    });
+
+    test('routineById returns the matching routine', () {
+      expect(routineById(daily30RoutineId).blocks, dailyBlocks);
+      expect(routineById(hipLumbarResetRoutineId).blocks, hipLumbarResetBlocks);
+    });
+  });
+
+  group('hipLumbarResetBlocks', () {
+    test('has 5 blocks (Wake-Up, Decompress, Mobilize, Strengthen, Cool Down)',
+        () {
+      expect(hipLumbarResetBlocks.length, 5);
+      expect(hipLumbarResetBlocks.map((b) => b.title).toList(), [
+        'Morning Wake-Up',
+        'A. Decompress',
+        'B. Mobilize',
+        'C. Strengthen',
+        'D. Cool Down',
+      ]);
+    });
+
+    test('all exercises have required fields and hlr- prefix', () {
+      for (final block in hipLumbarResetBlocks) {
+        for (final exercise in block.exercises) {
+          expect(exercise.id, startsWith('hlr-'));
+          expect(exercise.name, isNotEmpty);
+          expect(exercise.duration, isNotEmpty);
+          expect(exercise.description, isNotEmpty);
+          expect(exercise.cue, isNotEmpty);
+        }
+      }
+    });
+
+    test('no ID collisions with Daily 30', () {
+      final daily30Ids =
+          dailyBlocks.expand((b) => b.exercises).map((e) => e.id).toSet();
+      final hlrIds = hipLumbarResetBlocks
+          .expand((b) => b.exercises)
+          .map((e) => e.id)
+          .toSet();
+      expect(daily30Ids.intersection(hlrIds), isEmpty);
+    });
+
+    test('strength block exercises all have sets > 1', () {
+      final strength =
+          hipLumbarResetBlocks.firstWhere((b) => b.title == 'C. Strengthen');
+      for (final e in strength.exercises) {
+        expect(e.sets, greaterThan(1),
+            reason: '${e.id} should be multi-set in the strengthen block');
+      }
+    });
+
+    test('total exercises is 22', () {
+      final total = hipLumbarResetBlocks.fold<int>(
+          0, (sum, b) => sum + b.exercises.length);
+      expect(total, 22);
+    });
+  });
 }

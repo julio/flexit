@@ -32,6 +32,7 @@ class _TodayScreenState extends State<TodayScreen> {
   int? _alcoholYesterday;
   int? _backPain;
   String _yesterdayKey = '';
+  Routine _routine = routines.first;
 
   @override
   void initState() {
@@ -56,9 +57,11 @@ class _TodayScreenState extends State<TodayScreen> {
     final pRating = await getPRating(today);
     final alcoholYesterday = await getAlcoholRating(yesterday);
     final backPain = await getBackPainRating(today);
+    final routineId = await getActiveRoutineId();
+    final routine = routineById(routineId);
     final timers = <String, int>{};
     final reps = <String, int>{};
-    for (final e in dailyBlocks.expand((b) => b.exercises)) {
+    for (final e in routine.blocks.expand((b) => b.exercises)) {
       if (e.timer != null) {
         timers[e.timer!.settingKey] =
             await getTimerSeconds(e.timer!.settingKey, e.timer!.defaultSeconds);
@@ -89,6 +92,7 @@ class _TodayScreenState extends State<TodayScreen> {
         _alcoholYesterday = alcoholYesterday;
         _backPain = backPain;
         _yesterdayKey = yesterday;
+        _routine = routine;
         _loading = false;
       });
       _updateTicker();
@@ -184,7 +188,7 @@ class _TodayScreenState extends State<TodayScreen> {
     setState(() => _completedExercises = updated);
 
     // Auto-complete session when all exercises are done
-    final allIds = dailyBlocks
+    final allIds = _routine.blocks
         .expand((b) => b.exercises)
         .expand((e) => e.atomicIds)
         .toSet();
@@ -210,14 +214,14 @@ class _TodayScreenState extends State<TodayScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final validAtomicIds = dailyBlocks
+    final validAtomicIds = _routine.blocks
         .expand((b) => b.exercises)
         .expand((e) => e.atomicIds)
         .toSet();
     final totalExercises = validAtomicIds.length;
     final completedCount =
         _completedExercises.intersection(validAtomicIds).length;
-    final estimatedMinutes = dailyBlocks.fold<int>(0, (sum, b) {
+    final estimatedMinutes = _routine.blocks.fold<int>(0, (sum, b) {
       final n = int.tryParse(b.duration.split(' ').first) ?? 0;
       return sum + n;
     });
@@ -250,7 +254,7 @@ class _TodayScreenState extends State<TodayScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Daily 30',
+                      _routine.title,
                       style: TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.w800,
@@ -390,13 +394,13 @@ class _TodayScreenState extends State<TodayScreen> {
             sliver: SliverList(
               delegate: SliverChildBuilderDelegate(
                 (context, index) => _BlockCard(
-                  block: dailyBlocks[index],
+                  block: _routine.blocks[index],
                   completedExercises: _completedExercises,
                   timerSeconds: _timerSeconds,
                   repCounts: _repCounts,
                   onToggle: _toggleExercise,
                 ),
-                childCount: dailyBlocks.length,
+                childCount: _routine.blocks.length,
               ),
             ),
           ),

@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flexit/data/exercises.dart';
 import 'package:flexit/data/storage.dart';
 import 'package:flexit/models/session.dart';
 
@@ -466,6 +467,24 @@ void main() {
       expect(await getDarkMode(), isFalse);
       await setDarkMode(true);
       expect(await getDarkMode(), isTrue);
+    });
+  });
+
+  group('active routine', () {
+    test('defaults to Hip & Lumbar Reset', () async {
+      expect(await getActiveRoutineId(), hipLumbarResetRoutineId);
+    });
+
+    test('persists when switched to Daily 30', () async {
+      await setActiveRoutineId(daily30RoutineId);
+      expect(await getActiveRoutineId(), daily30RoutineId);
+    });
+
+    test('falls back to default for unknown stored id', () async {
+      SharedPreferences.setMockInitialValues({
+        'flexit_routine': 'something-unknown',
+      });
+      expect(await getActiveRoutineId(), defaultRoutineId);
     });
   });
 

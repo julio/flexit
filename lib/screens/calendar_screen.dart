@@ -21,6 +21,7 @@ class CalendarScreenState extends State<CalendarScreen> {
   Map<String, int> _alcoholRatings = {};
   Map<String, int> _backPainRatings = {};
   String _measurement = calendarMeasurements.first;
+  Routine _routine = routines.first;
   DateTime _focusedMonth = DateTime.now();
   String? _selectedDate;
   Set<String> _selectedDateExercises = {};
@@ -38,6 +39,7 @@ class CalendarScreenState extends State<CalendarScreen> {
     final alcoholRatings = await getAllAlcoholRatings();
     final backPainRatings = await getAllBackPainRatings();
     final measurement = await getCalendarMeasurement();
+    final routineId = await getActiveRoutineId();
     if (mounted) {
       setState(() {
         _sessions = sessions;
@@ -46,6 +48,7 @@ class CalendarScreenState extends State<CalendarScreen> {
         _alcoholRatings = alcoholRatings;
         _backPainRatings = backPainRatings;
         _measurement = measurement;
+        _routine = routineById(routineId);
       });
     }
   }
@@ -218,7 +221,7 @@ class CalendarScreenState extends State<CalendarScreen> {
   /// atomic set is checked. A retroactive session is one we created here (no
   /// startedAt); we never touch real sessions that have a startedAt timestamp.
   Future<void> _reconcileSession(String date, Set<String> done) async {
-    final validAtomicIds = dailyBlocks
+    final validAtomicIds = _routine.blocks
         .expand((b) => b.exercises)
         .expand((e) => e.atomicIds)
         .toSet();
@@ -433,7 +436,7 @@ class CalendarScreenState extends State<CalendarScreen> {
                             [
                               s.type == 'weekend'
                                   ? 'Weekend deep session'
-                                  : 'Daily 30',
+                                  : _routine.title,
                               if (s.duration != null)
                                 _formatDuration(s.duration!),
                             ].join(' · '),
@@ -498,7 +501,7 @@ class CalendarScreenState extends State<CalendarScreen> {
 
       var isPartial = false;
       if ((isMissed || isToday) && !isCompleted) {
-        final validAtomicIds = dailyBlocks
+        final validAtomicIds = _routine.blocks
             .expand((b) => b.exercises)
             .expand((e) => e.atomicIds)
             .toSet();
@@ -605,7 +608,7 @@ class CalendarScreenState extends State<CalendarScreen> {
     final date = _selectedDate!;
     final isFuture = DateTime.parse(date).isAfter(DateTime.now());
     final editable = !isToday && !isFuture;
-    final allExercises = dailyBlocks.expand((b) => b.exercises).toList();
+    final allExercises = _routine.blocks.expand((b) => b.exercises).toList();
     final totalAtomic =
         allExercises.fold<int>(0, (sum, e) => sum + e.sets);
     final completedCount = allExercises.fold<int>(
@@ -640,7 +643,7 @@ class CalendarScreenState extends State<CalendarScreen> {
                 'Completed at ${_formatTime(selectedSession.completedAt)}',
                 selectedSession.type == 'weekend'
                     ? 'Weekend deep session'
-                    : 'Daily 30',
+                    : _routine.title,
                 if (selectedSession.duration != null)
                   'took ${_formatDuration(selectedSession.duration!)}',
               ].join(' · '),

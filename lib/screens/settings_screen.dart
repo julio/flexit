@@ -15,6 +15,7 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   final Map<String, int> _timerValues = {};
   final Map<String, int> _repValues = {};
+  Routine _routine = routines.first;
   bool _loading = true;
 
   @override
@@ -23,31 +24,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _load();
   }
 
-  List<Exercise> get _timed => dailyBlocks
+  List<Exercise> get _timed => _routine.blocks
       .expand((b) => b.exercises)
       .where((e) => e.timer != null)
       .toList();
 
-  List<Exercise> get _repped => dailyBlocks
+  List<Exercise> get _repped => _routine.blocks
       .expand((b) => b.exercises)
       .where((e) => e.reps != null)
       .toList();
 
   Future<void> _load() async {
+    final routineId = await getActiveRoutineId();
+    final routine = routineById(routineId);
     final timers = <String, int>{};
-    for (final e in _timed) {
+    for (final e in routine.blocks
+        .expand((b) => b.exercises)
+        .where((e) => e.timer != null)) {
       final spec = e.timer!;
       timers[spec.settingKey] =
           await getTimerSeconds(spec.settingKey, spec.defaultSeconds);
     }
     final reps = <String, int>{};
-    for (final e in _repped) {
+    for (final e in routine.blocks
+        .expand((b) => b.exercises)
+        .where((e) => e.reps != null)) {
       final spec = e.reps!;
       reps[spec.settingKey] =
           await getRepsCount(spec.settingKey, spec.defaultReps);
     }
     if (mounted) {
       setState(() {
+        _routine = routine;
         _timerValues
           ..clear()
           ..addAll(timers);
@@ -62,6 +70,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _toggleDarkMode(bool dark) async {
     await setDarkMode(dark);
     themeIsDark.value = dark;
+  }
+
+  Future<void> _selectRoutine(String id) async {
+    await setActiveRoutineId(id);
+    await _load();
   }
 
   Future<void> _updateTimer(String key, int seconds) async {
@@ -84,6 +97,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
           : ListView(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
               children: [
+                const _SectionHeader('ROUTINE'),
+                const SizedBox(height: 12),
+                ...routines.map((r) => _RoutineTile(
+                      routine: r,
+                      selected: r.id == _routine.id,
+                      onTap: () => _selectRoutine(r.id),
+                    )),
+                const SizedBox(height: 16),
                 const _SectionHeader('APPEARANCE'),
                 const SizedBox(height: 12),
                 ValueListenableBuilder<bool>(
@@ -338,6 +359,80 @@ class _TimerSettingTile extends StatelessWidget {
             onChanged: (v) => onChanged(v.round()),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _RoutineTile extends StatelessWidget {
+  final Routine routine;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _RoutineTile({
+    required this.routine,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final totalMinutes = routine.blocks.fold<int>(0, (sum, b) {
+      final n = int.tryParse(b.duration.split(' ').first) ?? 0;
+      return sum + n;
+    });
+    final exerciseCount =
+        routine.blocks.fold<int>(0, (sum, b) => sum + b.exercises.length);
+
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.accentDim : AppColors.card,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: selected ? AppColors.accent : AppColors.cardBorder,
+            width: selected ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              selected
+                  ? Icons.radio_button_checked
+                  : Icons.radio_button_unchecked,
+              color: selected ? AppColors.accent : AppColors.textMuted,
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    routine.title,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.text,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '$exerciseCount exercises · ~$totalMinutes min',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
