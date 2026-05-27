@@ -302,6 +302,53 @@ void main() {
     });
   });
 
+  group('Exercise.parsedDurationSeconds', () {
+    Exercise mk(String dur) => Exercise(
+        id: 'x', name: 'X', duration: dur, description: 'd', cue: 'c');
+
+    test('parses sec', () {
+      expect(mk('60 sec').parsedDurationSeconds, 60);
+      expect(mk('30 sec each side').parsedDurationSeconds, 30);
+      expect(mk('20 sec').parsedDurationSeconds, 20);
+    });
+
+    test('parses min and converts to sec', () {
+      expect(mk('5 min').parsedDurationSeconds, 300);
+      expect(mk('1 min').parsedDurationSeconds, 60);
+    });
+
+    test('takes the lower bound from ranges', () {
+      expect(mk('40–45 sec each side').parsedDurationSeconds, 40);
+    });
+
+    test('finds the hold seconds in rep×hold patterns', () {
+      expect(mk('5 reps × 5 sec hold').parsedDurationSeconds, 5);
+    });
+
+    test('returns null for pure rep counts', () {
+      expect(mk('10 reps').parsedDurationSeconds, isNull);
+      expect(mk('8 reps each side').parsedDurationSeconds, isNull);
+      expect(mk('8–10 reps').parsedDurationSeconds, isNull);
+      expect(mk('100 reps').parsedDurationSeconds, isNull);
+      expect(mk('10 switches').parsedDurationSeconds, isNull);
+      expect(mk('3 reps each side').parsedDurationSeconds, isNull);
+    });
+
+    test('HLR time-based exercises all have a parsed timer', () {
+      final timedNames = <String>[];
+      for (final block in hipLumbarResetProgram.constantBlocks) {
+        for (final e in block.exercises) {
+          if (RegExp(r'(sec|min)\b').hasMatch(e.duration)) {
+            expect(e.parsedDurationSeconds, isNotNull,
+                reason: '${e.name} ("${e.duration}") should parse');
+            timedNames.add(e.name);
+          }
+        }
+      }
+      expect(timedNames, isNotEmpty);
+    });
+  });
+
   group('Exercise.effectiveVideoUrl', () {
     test('uses the curated URL when one is set', () {
       const e = Exercise(

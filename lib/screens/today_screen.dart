@@ -590,16 +590,23 @@ class _ExerciseCard extends StatelessWidget {
     final isDone = atomicIds.every(completedExercises.contains);
     final isMultiSet = exercise.sets > 1;
     final timer = exercise.timer;
-    final timerDuration = timer == null
-        ? 0
-        : (timerSeconds[timer.settingKey] ?? timer.defaultSeconds);
+    // Timer duration sources, in priority order: a user-configurable
+    // TimerSpec, then a number parsed out of the duration label, then no
+    // timer. Any value > 0 gets a tappable countdown button.
+    final timerDuration = timer != null
+        ? (timerSeconds[timer.settingKey] ?? timer.defaultSeconds)
+        : (exercise.parsedDurationSeconds ?? 0);
+    final hasTimer = timerDuration > 0;
     final repsSpec = exercise.reps;
     final durationLabel = repsSpec != null
         ? '${exercise.sets} × ${repCounts[repsSpec.settingKey] ?? repsSpec.defaultReps} reps'
         : exercise.duration;
+    // Use the column-of-buttons layout whenever there are multiple sets OR a
+    // timer is available — the timer button replaces the inline checkbox.
+    final useColumnLayout = isMultiSet || hasTimer;
 
     return GestureDetector(
-      onTap: isMultiSet ? null : () => onToggle(exercise.id),
+      onTap: useColumnLayout ? null : () => onToggle(exercise.id),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         margin: const EdgeInsets.only(bottom: 8),
@@ -618,21 +625,22 @@ class _ExerciseCard extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.only(top: 2, right: 14),
-              child: isMultiSet
+              child: useColumnLayout
                   ? Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         for (var i = 0; i < atomicIds.length; i++) ...[
                           if (i > 0) const SizedBox(height: 6),
-                          if (timer != null)
+                          if (hasTimer)
                             _TimerSetButton(
                               key: ValueKey(
                                   '${atomicIds[i]}@$timerDuration'),
-                              label: '${i + 1}',
+                              label: isMultiSet ? '${i + 1}' : 'Go',
                               durationSeconds: timerDuration,
                               notificationId: atomicIds[i].hashCode,
-                              notificationBody:
-                                  '${exercise.name} · set ${i + 1} done',
+                              notificationBody: isMultiSet
+                                  ? '${exercise.name} · set ${i + 1} done'
+                                  : '${exercise.name} done',
                               isDone:
                                   completedExercises.contains(atomicIds[i]),
                               onComplete: () => onToggle(atomicIds[i]),

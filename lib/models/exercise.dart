@@ -54,6 +54,22 @@ class Exercise {
     final query = Uri.encodeComponent('$name exercise');
     return 'https://www.youtube.com/results?search_query=$query';
   }
+
+  /// Parses the duration string for a time period — "60 sec", "30 sec each
+  /// side", "5 min", "5 reps × 5 sec hold", "40–45 sec each side". Returns
+  /// null for purely rep-based exercises like "10 reps". For ranges (e.g.
+  /// 40–45 sec) returns the lower bound; for "X reps × Y sec hold" returns Y.
+  int? get parsedDurationSeconds {
+    // For ranges like "40–45 sec each side" we want the lower bound (40), so
+    // capture the first number of an optional `n[–-]m` pair before sec/min.
+    final secMatch =
+        RegExp(r'(\d+)(?:\s*[–\-]\s*\d+)?\s*sec').firstMatch(duration);
+    if (secMatch != null) return int.parse(secMatch.group(1)!);
+    final minMatch =
+        RegExp(r'(\d+)(?:\s*[–\-]\s*\d+)?\s*min').firstMatch(duration);
+    if (minMatch != null) return int.parse(minMatch.group(1)!) * 60;
+    return null;
+  }
 }
 
 class ExerciseBlock {
