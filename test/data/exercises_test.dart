@@ -302,6 +302,47 @@ void main() {
     });
   });
 
+  group('Exercise.effectiveVideoUrl', () {
+    test('uses the curated URL when one is set', () {
+      const e = Exercise(
+        id: 'x',
+        name: 'X',
+        duration: '1 rep',
+        description: 'd',
+        cue: 'c',
+        videoUrl: 'https://example.com/specific-video',
+      );
+      expect(e.effectiveVideoUrl, 'https://example.com/specific-video');
+    });
+
+    test('falls back to a YouTube search URL when none is curated', () {
+      const e = Exercise(
+        id: 'x',
+        name: "World's Greatest Stretch",
+        duration: '1 rep',
+        description: 'd',
+        cue: 'c',
+      );
+      expect(e.effectiveVideoUrl, startsWith('https://www.youtube.com/results?search_query='));
+      expect(e.effectiveVideoUrl, contains('Greatest'));
+    });
+
+    test('every Daily 30 and HLR exercise yields a non-empty URL', () {
+      final allExercises = <Exercise>[
+        ...dailyBlocks.expand((b) => b.exercises),
+        ...hipLumbarResetProgram.weeks
+            .expand((w) => w.strengthBlock.exercises),
+        for (final b in hipLumbarResetProgram.constantBlocks) ...b.exercises,
+      ];
+      for (final e in allExercises) {
+        expect(e.effectiveVideoUrl, isNotEmpty,
+            reason: '${e.id} has no derivable video URL');
+        expect(Uri.tryParse(e.effectiveVideoUrl), isNotNull,
+            reason: '${e.id} produced an invalid URL');
+      }
+    });
+  });
+
   group('WeekProgram.walkingTarget', () {
     test('renders single value when min == max', () {
       const w = WeekProgram(

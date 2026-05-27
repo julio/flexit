@@ -653,29 +653,43 @@ class _ExerciseCard extends StatelessWidget {
                         fontStyle: FontStyle.italic,
                       ),
                     ),
-                    if (exercise.videoUrl != null) ...[
-                      const SizedBox(height: 10),
-                      GestureDetector(
-                        onTap: () => launchUrl(Uri.parse(exercise.videoUrl!),
-                            mode: LaunchMode.externalApplication),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 7),
-                          decoration: BoxDecoration(
-                            color: AppColors.accentDim,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Text(
-                            'Watch video',
-                            style: TextStyle(
+                    const SizedBox(height: 10),
+                    GestureDetector(
+                      onTap: () => launchUrl(
+                          Uri.parse(exercise.effectiveVideoUrl),
+                          mode: LaunchMode.externalApplication),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 7),
+                        decoration: BoxDecoration(
+                          color: AppColors.accentDim,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              exercise.videoUrl != null
+                                  ? Icons.play_circle_outline
+                                  : Icons.search,
                               color: AppColors.accent,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
+                              size: 14,
                             ),
-                          ),
+                            const SizedBox(width: 6),
+                            Text(
+                              exercise.videoUrl != null
+                                  ? 'Watch video'
+                                  : 'Find on YouTube',
+                              style: TextStyle(
+                                color: AppColors.accent,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
+                    ),
                   ],
                 ],
               ),

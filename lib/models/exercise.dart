@@ -44,6 +44,16 @@ class Exercise {
     if (sets <= 1) return [id];
     return List.generate(sets, (i) => '$id:${i + 1}');
   }
+
+  /// Where to send the user when they tap the video button. If the exercise
+  /// has a curated `videoUrl`, use that; otherwise return a YouTube search
+  /// URL keyed off the exercise name so they always have a way to look it up.
+  String get effectiveVideoUrl {
+    final explicit = videoUrl;
+    if (explicit != null) return explicit;
+    final query = Uri.encodeComponent('$name exercise');
+    return 'https://www.youtube.com/results?search_query=$query';
+  }
 }
 
 class ExerciseBlock {
