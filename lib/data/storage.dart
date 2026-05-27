@@ -100,6 +100,45 @@ Future<void> clearStartTime(String date) async {
   await prefs.remove('$_startPrefix$date');
 }
 
+/// Total accumulated paused time for a session (in seconds), excluding any
+/// pause currently in progress. Returns Duration.zero when nothing's stored.
+Future<Duration> getPauseTotal(String date) async {
+  final prefs = await SharedPreferences.getInstance();
+  final s = prefs.getInt('${_startPrefix}pause_total_$date') ?? 0;
+  return Duration(seconds: s);
+}
+
+Future<void> setPauseTotal(String date, Duration value) async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setInt('${_startPrefix}pause_total_$date', value.inSeconds);
+}
+
+/// When the user is currently paused, this returns when the pause began;
+/// null otherwise.
+Future<DateTime?> getPauseStartedAt(String date) async {
+  final prefs = await SharedPreferences.getInstance();
+  final raw = prefs.getString('${_startPrefix}pause_started_$date');
+  if (raw == null) return null;
+  return DateTime.tryParse(raw);
+}
+
+Future<void> setPauseStartedAt(String date, DateTime time) async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setString(
+      '${_startPrefix}pause_started_$date', time.toIso8601String());
+}
+
+Future<void> clearPauseStartedAt(String date) async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.remove('${_startPrefix}pause_started_$date');
+}
+
+Future<void> clearPauseState(String date) async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.remove('${_startPrefix}pause_total_$date');
+  await prefs.remove('${_startPrefix}pause_started_$date');
+}
+
 Future<int> getTimerSeconds(String settingKey, int defaultSeconds) async {
   final prefs = await SharedPreferences.getInstance();
   return prefs.getInt('$_timerPrefix$settingKey') ?? defaultSeconds;

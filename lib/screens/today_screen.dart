@@ -29,6 +29,8 @@ class _TodayScreenState extends State<TodayScreen> {
   DateTime? _startTime;
   Duration? _finalElapsed;
   Timer? _ticker;
+  Duration _pauseTotal = Duration.zero;
+  DateTime? _pauseStartedAt;
   int? _pRating;
   int? _alcoholYesterday;
   int? _backPain;
@@ -57,6 +59,8 @@ class _TodayScreenState extends State<TodayScreen> {
     final sessions = await getSessions();
     final completed = await getTodayCompletedExercises();
     final startTime = await getStartTime(today);
+    final pauseTotal = await getPauseTotal(today);
+    final pauseStartedAt = await getPauseStartedAt(today);
     final pRating = await getPRating(today);
     final alcoholYesterday = await getAlcoholRating(yesterday);
     final backPain = await getBackPainRating(today);
@@ -104,6 +108,8 @@ class _TodayScreenState extends State<TodayScreen> {
         _timerSeconds = timers;
         _repCounts = reps;
         _startTime = startTime;
+        _pauseTotal = pauseTotal;
+        _pauseStartedAt = pauseStartedAt;
         _finalElapsed = finalElapsed;
         _pRating = pRating;
         _alcoholYesterday = alcoholYesterday;
@@ -141,18 +147,59 @@ class _TodayScreenState extends State<TodayScreen> {
 
   void _updateTicker() {
     _ticker?.cancel();
-    if (_startTime != null && !_done) {
+    // Only tick while a session is running and NOT paused — when paused the
+    // display is frozen at the pause moment.
+    if (_startTime != null && !_done && _pauseStartedAt == null) {
       _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
         if (mounted) setState(() {});
       });
     }
   }
 
+  /// Total paused duration including any in-progress pause as of [at].
+  Duration _totalPause(DateTime at) {
+    if (_pauseStartedAt == null) return _pauseTotal;
+    return _pauseTotal + at.difference(_pauseStartedAt!);
+  }
+
+  Future<void> _togglePause() async {
+    if (_startTime == null || _done) return;
+    final today = formatDate(DateTime.now());
+    final now = DateTime.now();
+    if (_pauseStartedAt == null) {
+      // Pause now.
+      await setPauseStartedAt(today, now);
+      HapticFeedback.lightImpact();
+      if (!mounted) return;
+      setState(() => _pauseStartedAt = now);
+    } else {
+      // Resume: roll the current pause into the accumulated total.
+      final addition = now.difference(_pauseStartedAt!);
+      final newTotal = _pauseTotal + addition;
+      await setPauseTotal(today, newTotal);
+      await clearPauseStartedAt(today);
+      HapticFeedback.lightImpact();
+      if (!mounted) return;
+      setState(() {
+        _pauseTotal = newTotal;
+        _pauseStartedAt = null;
+      });
+    }
+    _updateTicker();
+  }
+
   Future<void> _start() async {
     final now = DateTime.now();
-    await setStartTime(formatDate(now), now);
+    final today = formatDate(now);
+    await setStartTime(today, now);
+    // Starting a brand-new session resets any leftover pause state.
+    await clearPauseState(today);
     if (!mounted) return;
-    setState(() => _startTime = now);
+    setState(() {
+      _startTime = now;
+      _pauseTotal = Duration.zero;
+      _pauseStartedAt = null;
+    });
     _updateTicker();
     HapticFeedback.mediumImpact();
   }
@@ -216,12 +263,20 @@ class _TodayScreenState extends State<TodayScreen> {
     if (allDone && !_done) {
       final now = DateTime.now();
       final today = formatDate(now);
+      // Push startedAt forward by the total paused time so the resulting
+      // duration (completedAt − startedAt) reflects active time only.
+      String? adjustedStart;
+      if (_startTime != null) {
+        adjustedStart =
+            _startTime!.add(_totalPause(now)).toIso8601String();
+      }
       await saveSession(Session(
         date: today,
         completedAt: now.toIso8601String(),
         type: 'daily',
-        startedAt: _startTime?.toIso8601String(),
+        startedAt: adjustedStart,
       ));
+      await clearPauseState(today);
       HapticFeedback.heavyImpact();
       await _loadState();
     } else if (!allDone && _done) {
@@ -379,7 +434,12 @@ class _TodayScreenState extends State<TodayScreen> {
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
                 child: _startTime == null
                     ? _StartButton(onPressed: _start)
-                    : _RunningClock(startTime: _startTime!),
+                    : _RunningClock(
+                        startTime: _startTime!,
+                        pauseTotal: _pauseTotal,
+                        pauseStartedAt: _pauseStartedAt,
+                        onPauseToggle: _togglePause,
+                      ),
               ),
             ),
           if (_done)
@@ -744,30 +804,100 @@ class _StartButton extends StatelessWidget {
 
 class _RunningClock extends StatelessWidget {
   final DateTime startTime;
-  const _RunningClock({required this.startTime});
+  final Duration pauseTotal;
+  final DateTime? pauseStartedAt;
+  final VoidCallback onPauseToggle;
+
+  const _RunningClock({
+    required this.startTime,
+    required this.pauseTotal,
+    required this.pauseStartedAt,
+    required this.onPauseToggle,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final elapsed = DateTime.now().difference(startTime);
+    final paused = pauseStartedAt != null;
+    // Frozen at the pause moment when paused; live wall-clock otherwise.
+    final reference = paused ? pauseStartedAt! : DateTime.now();
+    final elapsed = reference.difference(startTime) - pauseTotal;
+    final clamped = elapsed.isNegative ? Duration.zero : elapsed;
+
+    final fg = paused ? AppColors.warning : AppColors.accent;
+    final bg = paused
+        ? AppColors.warningDim
+        : AppColors.accentDim;
+
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
       decoration: BoxDecoration(
-        color: AppColors.accentDim,
+        color: bg,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.accent.withValues(alpha: 0.3)),
+        border: Border.all(color: fg.withValues(alpha: 0.3)),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.timer_outlined, color: AppColors.accent, size: 18),
-          const SizedBox(width: 8),
-          Text(
-            _formatElapsed(elapsed),
-            style: TextStyle(
-              color: AppColors.accent,
-              fontWeight: FontWeight.w800,
-              fontSize: 16,
-              fontFeatures: [FontFeature.tabularFigures()],
+          Icon(
+            paused ? Icons.pause_circle_outline : Icons.timer_outlined,
+            color: fg,
+            size: 20,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Row(
+              children: [
+                Text(
+                  _formatElapsed(clamped),
+                  style: TextStyle(
+                    color: fg,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 18,
+                    fontFeatures: [FontFeature.tabularFigures()],
+                  ),
+                ),
+                if (paused) ...[
+                  const SizedBox(width: 8),
+                  Text(
+                    'paused',
+                    style: TextStyle(
+                      color: fg,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          GestureDetector(
+            onTap: onPauseToggle,
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: fg.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    paused ? Icons.play_arrow : Icons.pause,
+                    color: fg,
+                    size: 16,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    paused ? 'Resume' : 'Pause',
+                    style: TextStyle(
+                      color: fg,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],

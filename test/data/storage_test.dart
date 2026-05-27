@@ -488,6 +488,51 @@ void main() {
     });
   });
 
+  group('session pause state', () {
+    test('getPauseTotal returns zero when nothing stored', () async {
+      expect(await getPauseTotal('2026-05-27'), Duration.zero);
+    });
+
+    test('setPauseTotal/getPauseTotal round-trips seconds', () async {
+      await setPauseTotal('2026-05-27', const Duration(seconds: 75));
+      expect(await getPauseTotal('2026-05-27'),
+          const Duration(seconds: 75));
+    });
+
+    test('getPauseStartedAt returns null when not paused', () async {
+      expect(await getPauseStartedAt('2026-05-27'), isNull);
+    });
+
+    test('setPauseStartedAt/getPauseStartedAt round-trips a time', () async {
+      final t = DateTime(2026, 5, 27, 9, 15, 30);
+      await setPauseStartedAt('2026-05-27', t);
+      expect(await getPauseStartedAt('2026-05-27'), t);
+    });
+
+    test('clearPauseStartedAt removes the in-progress pause flag', () async {
+      await setPauseStartedAt('2026-05-27', DateTime(2026, 5, 27, 10));
+      await clearPauseStartedAt('2026-05-27');
+      expect(await getPauseStartedAt('2026-05-27'), isNull);
+    });
+
+    test('clearPauseState clears both total and in-progress', () async {
+      await setPauseTotal('2026-05-27', const Duration(seconds: 90));
+      await setPauseStartedAt('2026-05-27', DateTime(2026, 5, 27, 11));
+      await clearPauseState('2026-05-27');
+      expect(await getPauseTotal('2026-05-27'), Duration.zero);
+      expect(await getPauseStartedAt('2026-05-27'), isNull);
+    });
+
+    test('different dates store independent pause state', () async {
+      await setPauseTotal('2026-05-26', const Duration(seconds: 30));
+      await setPauseTotal('2026-05-27', const Duration(seconds: 90));
+      expect(await getPauseTotal('2026-05-26'),
+          const Duration(seconds: 30));
+      expect(await getPauseTotal('2026-05-27'),
+          const Duration(seconds: 90));
+    });
+  });
+
   group('program start date', () {
     test('returns null when not set', () async {
       expect(
