@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flexit/data/exercises.dart';
+import 'package:flexit/models/exercise.dart';
+import 'package:flexit/models/program.dart';
 
 void main() {
   group('dailyBlocks', () {
@@ -188,10 +190,143 @@ void main() {
       }
     });
 
-    test('total exercises is 22', () {
+    test('total exercises is 22 (Week 1 view)', () {
       final total = hipLumbarResetBlocks.fold<int>(
           0, (sum, b) => sum + b.exercises.length);
       expect(total, 22);
+    });
+  });
+
+  group('hipLumbarResetProgram', () {
+    test('has 6 weeks', () {
+      expect(hipLumbarResetProgram.weeks.length, 6);
+      expect(hipLumbarResetProgram.weeks.map((w) => w.weekNumber),
+          [1, 2, 3, 4, 5, 6]);
+    });
+
+    test('routine wires the program in', () {
+      final routine = routineById(hipLumbarResetRoutineId);
+      expect(routine.hasProgram, isTrue);
+      expect(routine.program, hipLumbarResetProgram);
+    });
+
+    test('Daily 30 has no program', () {
+      expect(routineById(daily30RoutineId).hasProgram, isFalse);
+    });
+
+    test('currentWeek is 1 on start date', () {
+      final start = DateTime(2026, 5, 26);
+      expect(hipLumbarResetProgram.currentWeek(start, start), 1);
+    });
+
+    test('currentWeek rolls over every 7 days', () {
+      final start = DateTime(2026, 5, 26);
+      expect(
+          hipLumbarResetProgram.currentWeek(
+              start, start.add(const Duration(days: 6))),
+          1);
+      expect(
+          hipLumbarResetProgram.currentWeek(
+              start, start.add(const Duration(days: 7))),
+          2);
+      expect(
+          hipLumbarResetProgram.currentWeek(
+              start, start.add(const Duration(days: 35))),
+          6);
+      // Week 7 onwards = maintenance, but currentWeek keeps incrementing.
+      // weekProgram clamps to the last defined week.
+      expect(
+          hipLumbarResetProgram.currentWeek(
+              start, start.add(const Duration(days: 42))),
+          7);
+      expect(
+          hipLumbarResetProgram.weekProgram(7).weekNumber, 6);
+    });
+
+    test('currentWeek before start clamps to week 1', () {
+      final start = DateTime(2026, 5, 26);
+      expect(
+          hipLumbarResetProgram.currentWeek(
+              start, start.subtract(const Duration(days: 30))),
+          1);
+    });
+
+    test('blocksForWeek inserts the right strength block', () {
+      final w1Blocks = hipLumbarResetProgram.blocksForWeek(1);
+      final w3Blocks = hipLumbarResetProgram.blocksForWeek(3);
+      // Block C is at index 3 (after wake-up, decompress, mobilize).
+      final w1Strength = w1Blocks[3];
+      final w3Strength = w3Blocks[3];
+      expect(w1Strength.exercises.any((e) => e.id == 'hlr-glute-bridge'),
+          isTrue);
+      expect(w3Strength.exercises.any((e) => e.id == 'hlr-single-leg-bridge'),
+          isTrue);
+      expect(w3Strength.exercises.any((e) => e.id == 'hlr-bear-hold'),
+          isTrue);
+    });
+
+    test('walking targets escalate week over week', () {
+      final miles =
+          hipLumbarResetProgram.weeks.map((w) => w.walkingMilesMax).toList();
+      for (var i = 1; i < miles.length; i++) {
+        expect(miles[i], greaterThanOrEqualTo(miles[i - 1]));
+      }
+    });
+
+    test('every strength block exercise has a hlr- prefix', () {
+      for (final week in hipLumbarResetProgram.weeks) {
+        for (final ex in week.strengthBlock.exercises) {
+          expect(ex.id, startsWith('hlr-'),
+              reason: 'week ${week.weekNumber}: ${ex.id}');
+        }
+      }
+    });
+
+    test('all new strength exercises exist somewhere in the program', () {
+      final allIds = hipLumbarResetProgram.weeks
+          .expand((w) => w.strengthBlock.exercises)
+          .map((e) => e.id)
+          .toSet();
+      for (final id in [
+        'hlr-single-leg-bridge',
+        'hlr-bear-hold',
+        'hlr-reverse-lunge',
+        'hlr-side-plank-mod',
+        'hlr-side-plank-full',
+        'hlr-walking-lunge',
+        'hlr-goblet-squat',
+        'hlr-single-leg-deadlift',
+      ]) {
+        expect(allIds, contains(id));
+      }
+    });
+  });
+
+  group('WeekProgram.walkingTarget', () {
+    test('renders single value when min == max', () {
+      const w = WeekProgram(
+        weekNumber: 1,
+        phase: 'p',
+        theme: 't',
+        strengthBlock: ExerciseBlock(
+            id: 'x', title: 'x', duration: '1 min', exercises: []),
+        walkingMilesMin: 0.5,
+        walkingMilesMax: 0.5,
+      );
+      expect(w.walkingTarget, '0.5 mi/day');
+    });
+
+    test('renders range when min != max', () {
+      const w = WeekProgram(
+        weekNumber: 4,
+        phase: 'p',
+        theme: 't',
+        strengthBlock: ExerciseBlock(
+            id: 'x', title: 'x', duration: '1 min', exercises: []),
+        walkingMilesMin: 1.5,
+        walkingMilesMax: 2,
+      );
+      expect(w.walkingTarget, '1.5–2 mi/day');
     });
   });
 }

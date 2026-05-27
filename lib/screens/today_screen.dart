@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../data/exercises.dart';
 import '../data/storage.dart';
 import '../models/exercise.dart';
+import '../models/program.dart';
 import '../models/session.dart';
 import '../services/notifications.dart';
 import '../theme.dart';
@@ -33,6 +34,8 @@ class _TodayScreenState extends State<TodayScreen> {
   int? _backPain;
   String _yesterdayKey = '';
   Routine _routine = routines.first;
+  List<ExerciseBlock> _blocks = const [];
+  WeekProgram? _weekProgram;
 
   @override
   void initState() {
@@ -59,9 +62,23 @@ class _TodayScreenState extends State<TodayScreen> {
     final backPain = await getBackPainRating(today);
     final routineId = await getActiveRoutineId();
     final routine = routineById(routineId);
+
+    // Resolve which blocks apply for today. Routines with a Program follow
+    // a weekly schedule keyed off a per-routine start date (set lazily here).
+    List<ExerciseBlock> blocks;
+    WeekProgram? weekProgram;
+    if (routine.hasProgram) {
+      final start = await ensureProgramStartDate(routine.id);
+      final week = routine.program!.currentWeek(start, DateTime.now());
+      blocks = routine.program!.blocksForWeek(week);
+      weekProgram = routine.program!.weekProgram(week);
+    } else {
+      blocks = routine.blocks;
+    }
+
     final timers = <String, int>{};
     final reps = <String, int>{};
-    for (final e in routine.blocks.expand((b) => b.exercises)) {
+    for (final e in blocks.expand((b) => b.exercises)) {
       if (e.timer != null) {
         timers[e.timer!.settingKey] =
             await getTimerSeconds(e.timer!.settingKey, e.timer!.defaultSeconds);
@@ -93,6 +110,8 @@ class _TodayScreenState extends State<TodayScreen> {
         _backPain = backPain;
         _yesterdayKey = yesterday;
         _routine = routine;
+        _blocks = blocks;
+        _weekProgram = weekProgram;
         _loading = false;
       });
       _updateTicker();
@@ -188,7 +207,7 @@ class _TodayScreenState extends State<TodayScreen> {
     setState(() => _completedExercises = updated);
 
     // Auto-complete session when all exercises are done
-    final allIds = _routine.blocks
+    final allIds = _blocks
         .expand((b) => b.exercises)
         .expand((e) => e.atomicIds)
         .toSet();
@@ -214,14 +233,14 @@ class _TodayScreenState extends State<TodayScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final validAtomicIds = _routine.blocks
+    final validAtomicIds = _blocks
         .expand((b) => b.exercises)
         .expand((e) => e.atomicIds)
         .toSet();
     final totalExercises = validAtomicIds.length;
     final completedCount =
         _completedExercises.intersection(validAtomicIds).length;
-    final estimatedMinutes = _routine.blocks.fold<int>(0, (sum, b) {
+    final estimatedMinutes = _blocks.fold<int>(0, (sum, b) {
       final n = int.tryParse(b.duration.split(' ').first) ?? 0;
       return sum + n;
     });
@@ -320,6 +339,13 @@ class _TodayScreenState extends State<TodayScreen> {
                 ),
               ),
             ),
+          if (_weekProgram != null)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                child: _WeekBanner(week: _weekProgram!),
+              ),
+            ),
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
@@ -394,13 +420,13 @@ class _TodayScreenState extends State<TodayScreen> {
             sliver: SliverList(
               delegate: SliverChildBuilderDelegate(
                 (context, index) => _BlockCard(
-                  block: _routine.blocks[index],
+                  block: _blocks[index],
                   completedExercises: _completedExercises,
                   timerSeconds: _timerSeconds,
                   repCounts: _repCounts,
                   onToggle: _toggleExercise,
                 ),
-                childCount: _routine.blocks.length,
+                childCount: _blocks.length,
               ),
             ),
           ),
@@ -1299,6 +1325,75 @@ class _BackPainButton extends StatelessWidget {
             fontWeight: FontWeight.w800,
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _WeekBanner extends StatelessWidget {
+  final WeekProgram week;
+  const _WeekBanner({required this.week});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+      decoration: BoxDecoration(
+        color: AppColors.accentDim,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.accent.withValues(alpha: 0.4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                'Week ${week.weekNumber}',
+                style: TextStyle(
+                  color: AppColors.accent,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.4,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  week.phase,
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            week.theme,
+            style: TextStyle(
+              color: AppColors.text,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Icon(Icons.directions_walk,
+                  color: AppColors.textSecondary, size: 14),
+              const SizedBox(width: 4),
+              Text(
+                'Walk: ${week.walkingTarget}',
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

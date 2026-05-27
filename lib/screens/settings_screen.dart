@@ -16,6 +16,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final Map<String, int> _timerValues = {};
   final Map<String, int> _repValues = {};
   Routine _routine = routines.first;
+  DateTime? _programStart;
   bool _loading = true;
 
   @override
@@ -37,6 +38,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _load() async {
     final routineId = await getActiveRoutineId();
     final routine = routineById(routineId);
+    final programStart =
+        routine.hasProgram ? await getProgramStartDate(routine.id) : null;
     final timers = <String, int>{};
     for (final e in routine.blocks
         .expand((b) => b.exercises)
@@ -56,6 +59,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (mounted) {
       setState(() {
         _routine = routine;
+        _programStart = programStart;
         _timerValues
           ..clear()
           ..addAll(timers);
@@ -64,6 +68,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ..addAll(reps);
         _loading = false;
       });
+    }
+  }
+
+  Future<void> _pickProgramStartDate() async {
+    final initial = _programStart ?? DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(2024, 1, 1),
+      lastDate: DateTime.now().add(const Duration(days: 30)),
+      helpText: 'Program start date',
+    );
+    if (picked != null) {
+      await setProgramStartDate(_routine.id, picked);
+      await _load();
     }
   }
 
@@ -104,6 +123,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       selected: r.id == _routine.id,
                       onTap: () => _selectRoutine(r.id),
                     )),
+                if (_routine.hasProgram && _programStart != null)
+                  _ProgramStartTile(
+                    routine: _routine,
+                    startDate: _programStart!,
+                    onTap: _pickProgramStartDate,
+                  ),
                 const SizedBox(height: 16),
                 const _SectionHeader('APPEARANCE'),
                 const SizedBox(height: 12),
@@ -431,6 +456,80 @@ class _RoutineTile extends StatelessWidget {
                 ],
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ProgramStartTile extends StatelessWidget {
+  final Routine routine;
+  final DateTime startDate;
+  final VoidCallback onTap;
+
+  const _ProgramStartTile({
+    required this.routine,
+    required this.startDate,
+    required this.onTap,
+  });
+
+  String _formatDate(DateTime d) {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    return '${months[d.month - 1]} ${d.day}, ${d.year}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final program = routine.program!;
+    final week = program.currentWeek(startDate, DateTime.now());
+    final cappedWeek = week.clamp(1, program.weeks.length);
+    final isMaintenance = week > program.weeks.length;
+    final label = isMaintenance
+        ? 'Week $week (maintenance, using Week $cappedWeek dose)'
+        : 'Week $week of ${program.weeks.length}';
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.cardBorder),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.event, color: AppColors.accent, size: 20),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Program start',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.text,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${_formatDate(startDate)} · $label',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right, color: AppColors.textMuted, size: 18),
           ],
         ),
       ),

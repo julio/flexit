@@ -14,6 +14,7 @@ const _backPainPrefix = 'flexit_bp_';
 const _calendarMeasurementKey = 'flexit_calendar_measurement';
 const _darkModeKey = 'flexit_dark_mode';
 const _routineKey = 'flexit_routine';
+const _programStartPrefix = 'flexit_program_start_';
 
 /// Which single measurement the calendar should render. The order is also the
 /// swipe order (right = next, left = previous).
@@ -213,6 +214,32 @@ Future<void> setActiveRoutineId(String id) async {
   assert(routines.any((r) => r.id == id), 'unknown routine: $id');
   final prefs = await SharedPreferences.getInstance();
   await prefs.setString(_routineKey, id);
+}
+
+/// Program start date for a routine. If missing, returns null (caller
+/// should default to today on first read for a program-based routine).
+Future<DateTime?> getProgramStartDate(String routineId) async {
+  final prefs = await SharedPreferences.getInstance();
+  final raw = prefs.getString('$_programStartPrefix$routineId');
+  if (raw == null) return null;
+  return DateTime.tryParse(raw);
+}
+
+Future<void> setProgramStartDate(String routineId, DateTime date) async {
+  final prefs = await SharedPreferences.getInstance();
+  final iso = formatDate(date);
+  await prefs.setString('$_programStartPrefix$routineId', iso);
+}
+
+/// Convenience: ensures a routine with a program has a start date. If one
+/// already exists, leaves it; otherwise sets it to today. Returns the
+/// effective start date.
+Future<DateTime> ensureProgramStartDate(String routineId) async {
+  final existing = await getProgramStartDate(routineId);
+  if (existing != null) return existing;
+  final today = DateTime.now();
+  await setProgramStartDate(routineId, today);
+  return DateTime(today.year, today.month, today.day);
 }
 
 Future<int> getRepsCount(String settingKey, int defaultReps) async {

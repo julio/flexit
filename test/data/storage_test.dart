@@ -488,6 +488,48 @@ void main() {
     });
   });
 
+  group('program start date', () {
+    test('returns null when not set', () async {
+      expect(
+          await getProgramStartDate(hipLumbarResetRoutineId), isNull);
+    });
+
+    test('persists and round-trips a date', () async {
+      final d = DateTime(2026, 5, 26);
+      await setProgramStartDate(hipLumbarResetRoutineId, d);
+      final back = await getProgramStartDate(hipLumbarResetRoutineId);
+      expect(back, d);
+    });
+
+    test('per-routine isolation', () async {
+      await setProgramStartDate(
+          hipLumbarResetRoutineId, DateTime(2026, 1, 1));
+      await setProgramStartDate(daily30RoutineId, DateTime(2026, 6, 1));
+      expect(await getProgramStartDate(hipLumbarResetRoutineId),
+          DateTime(2026, 1, 1));
+      expect(await getProgramStartDate(daily30RoutineId),
+          DateTime(2026, 6, 1));
+    });
+
+    test('ensureProgramStartDate sets today when missing', () async {
+      final result = await ensureProgramStartDate(hipLumbarResetRoutineId);
+      final today = DateTime.now();
+      expect(result.year, today.year);
+      expect(result.month, today.month);
+      expect(result.day, today.day);
+      // Subsequent calls return the same value.
+      final again = await ensureProgramStartDate(hipLumbarResetRoutineId);
+      expect(again, result);
+    });
+
+    test('ensureProgramStartDate leaves an existing value alone', () async {
+      final original = DateTime(2026, 5, 1);
+      await setProgramStartDate(hipLumbarResetRoutineId, original);
+      final result = await ensureProgramStartDate(hipLumbarResetRoutineId);
+      expect(result, original);
+    });
+  });
+
   group('back pain ratings', () {
     test('returns null when no rating saved', () async {
       expect(await getBackPainRating('2026-05-25'), isNull);
