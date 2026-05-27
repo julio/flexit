@@ -40,9 +40,30 @@ class Exercise {
     this.reps,
   });
 
+  /// Returns 2 for time-based exercises whose duration explicitly mentions
+  /// "each side" / "each leg", 1 otherwise. Each side gets its own atomic
+  /// ID and its own countdown button.
+  int get sidesPerSet {
+    if (parsedDurationSeconds == null) return 1;
+    final pattern =
+        RegExp(r'(each|per)\s+(side|leg)', caseSensitive: false);
+    return pattern.hasMatch(duration) ? 2 : 1;
+  }
+
   List<String> get atomicIds {
-    if (sets <= 1) return [id];
-    return List.generate(sets, (i) => '$id:${i + 1}');
+    final sides = sidesPerSet;
+    final effectiveSets = sets < 1 ? 1 : sets;
+    if (effectiveSets == 1 && sides == 1) return [id];
+    final result = <String>[];
+    for (var s = 0; s < effectiveSets; s++) {
+      for (var k = 0; k < sides; k++) {
+        final setPart = effectiveSets > 1 ? '${s + 1}' : '';
+        final sidePart = sides > 1 ? (k == 0 ? 'L' : 'R') : '';
+        final suffix = [setPart, sidePart].where((p) => p.isNotEmpty).join(':');
+        result.add(suffix.isEmpty ? id : '$id:$suffix');
+      }
+    }
+    return result;
   }
 
   /// Where to send the user when they tap the video button. If the exercise

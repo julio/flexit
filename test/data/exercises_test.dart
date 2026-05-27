@@ -79,7 +79,13 @@ void main() {
       expect(couch.timer, isNotNull);
       expect(couch.timer!.settingKey, 'couch-stretch');
       expect(couch.timer!.defaultSeconds, 90);
-      expect(couch.atomicIds, ['couch-stretch:1', 'couch-stretch:2']);
+      // "90 sec per side" → 2 sides × 2 sets = 4 atomic IDs
+      expect(couch.atomicIds, [
+        'couch-stretch:1:L',
+        'couch-stretch:1:R',
+        'couch-stretch:2:L',
+        'couch-stretch:2:R',
+      ]);
     });
 
     test('pigeon pose has 2 sets with a 90-second default timer', () {
@@ -299,6 +305,65 @@ void main() {
       ]) {
         expect(allIds, contains(id));
       }
+    });
+  });
+
+  group('Exercise.sidesPerSet and atomicIds', () {
+    Exercise mk({
+      required String duration,
+      int sets = 1,
+    }) =>
+        Exercise(
+          id: 'x',
+          name: 'X',
+          duration: duration,
+          description: 'd',
+          cue: 'c',
+          sets: sets,
+        );
+
+    test('returns 1 when no side language is present', () {
+      expect(mk(duration: '60 sec').sidesPerSet, 1);
+      expect(mk(duration: '5 min').sidesPerSet, 1);
+      expect(mk(duration: '20 sec').sidesPerSet, 1);
+    });
+
+    test('returns 2 for "each side"', () {
+      expect(mk(duration: '60 sec each side').sidesPerSet, 2);
+    });
+
+    test('returns 2 for "per side"', () {
+      expect(mk(duration: '90 sec per side').sidesPerSet, 2);
+    });
+
+    test('returns 2 for "each leg"', () {
+      expect(mk(duration: '12 sec each leg').sidesPerSet, 2);
+    });
+
+    test('returns 1 for rep-only exercises even with "each side"', () {
+      // Rep-based exercises stay as a single tap per set — Julio asked
+      // specifically for time-based per-side timers.
+      expect(mk(duration: '8 reps each side').sidesPerSet, 1);
+      expect(mk(duration: '15 reps each side').sidesPerSet, 1);
+    });
+
+    test('atomicIds: single set, one side', () {
+      expect(mk(duration: '60 sec').atomicIds, ['x']);
+    });
+
+    test('atomicIds: single set, two sides', () {
+      expect(mk(duration: '60 sec each side').atomicIds, ['x:L', 'x:R']);
+    });
+
+    test('atomicIds: multi-set, one side (current Daily 30 behavior)', () {
+      expect(mk(duration: '30 sec', sets: 3).atomicIds,
+          ['x:1', 'x:2', 'x:3']);
+    });
+
+    test('atomicIds: multi-set, two sides', () {
+      expect(
+          mk(duration: '60 sec each side', sets: 2).atomicIds,
+          ['x:1:L', 'x:1:R', 'x:2:L', 'x:2:R']);
     });
   });
 

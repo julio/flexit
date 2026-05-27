@@ -589,6 +589,8 @@ class _ExerciseCard extends StatelessWidget {
     final atomicIds = exercise.atomicIds;
     final isDone = atomicIds.every(completedExercises.contains);
     final isMultiSet = exercise.sets > 1;
+    final sides = exercise.sidesPerSet;
+    final hasSides = sides > 1;
     final timer = exercise.timer;
     // Timer duration sources, in priority order: a user-configurable
     // TimerSpec, then a number parsed out of the duration label, then no
@@ -603,7 +605,26 @@ class _ExerciseCard extends StatelessWidget {
         : exercise.duration;
     // Use the column-of-buttons layout whenever there are multiple sets OR a
     // timer is available — the timer button replaces the inline checkbox.
-    final useColumnLayout = isMultiSet || hasTimer;
+    final useColumnLayout = isMultiSet || hasTimer || hasSides;
+
+    String labelFor(int setIdx, int sideIdx) {
+      final hasSetLabel = isMultiSet;
+      final hasSideLabel = hasSides;
+      if (hasSetLabel && hasSideLabel) {
+        return '${setIdx + 1}${sideIdx == 0 ? 'L' : 'R'}';
+      }
+      if (hasSetLabel) return '${setIdx + 1}';
+      if (hasSideLabel) return sideIdx == 0 ? 'L' : 'R';
+      return 'Go';
+    }
+
+    String notifBodyFor(int setIdx, int sideIdx) {
+      final parts = <String>[exercise.name];
+      if (isMultiSet) parts.add('set ${setIdx + 1}');
+      if (hasSides) parts.add(sideIdx == 0 ? 'left side' : 'right side');
+      parts.add('done');
+      return parts.join(' · ');
+    }
 
     return GestureDetector(
       onTap: useColumnLayout ? null : () => onToggle(exercise.id),
@@ -629,30 +650,42 @@ class _ExerciseCard extends StatelessWidget {
                   ? Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        for (var i = 0; i < atomicIds.length; i++) ...[
-                          if (i > 0) const SizedBox(height: 6),
-                          if (hasTimer)
-                            _TimerSetButton(
-                              key: ValueKey(
-                                  '${atomicIds[i]}@$timerDuration'),
-                              label: isMultiSet ? '${i + 1}' : 'Go',
-                              durationSeconds: timerDuration,
-                              notificationId: atomicIds[i].hashCode,
-                              notificationBody: isMultiSet
-                                  ? '${exercise.name} · set ${i + 1} done'
-                                  : '${exercise.name} done',
-                              isDone:
-                                  completedExercises.contains(atomicIds[i]),
-                              onComplete: () => onToggle(atomicIds[i]),
-                              onUndo: () => onToggle(atomicIds[i]),
-                            )
-                          else
-                            _SetCheckbox(
-                              label: '${i + 1}',
-                              isDone:
-                                  completedExercises.contains(atomicIds[i]),
-                              onTap: () => onToggle(atomicIds[i]),
-                            ),
+                        for (var s = 0;
+                            s < (exercise.sets < 1 ? 1 : exercise.sets);
+                            s++) ...[
+                          if (s > 0) const SizedBox(height: 6),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              for (var k = 0; k < sides; k++) ...[
+                                if (k > 0) const SizedBox(width: 4),
+                                Builder(builder: (_) {
+                                  final atomicId = atomicIds[s * sides + k];
+                                  final label = labelFor(s, k);
+                                  if (hasTimer) {
+                                    return _TimerSetButton(
+                                      key: ValueKey(
+                                          '$atomicId@$timerDuration'),
+                                      label: label,
+                                      durationSeconds: timerDuration,
+                                      notificationId: atomicId.hashCode,
+                                      notificationBody: notifBodyFor(s, k),
+                                      isDone:
+                                          completedExercises.contains(atomicId),
+                                      onComplete: () => onToggle(atomicId),
+                                      onUndo: () => onToggle(atomicId),
+                                    );
+                                  }
+                                  return _SetCheckbox(
+                                    label: label,
+                                    isDone:
+                                        completedExercises.contains(atomicId),
+                                    onTap: () => onToggle(atomicId),
+                                  );
+                                }),
+                              ],
+                            ],
+                          ),
                         ],
                       ],
                     )
