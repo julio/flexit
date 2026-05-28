@@ -675,10 +675,21 @@ class CalendarScreenState extends State<CalendarScreen> {
               style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
             )
           else if (isFuture)
-            Text(
-              'Future',
-              style: TextStyle(color: AppColors.textMuted, fontSize: 13),
-            )
+            Builder(builder: (_) {
+              final parts = <String>['Upcoming'];
+              if (_routine.hasProgram && _programStart != null) {
+                final week = _routine.program!
+                    .currentWeek(_programStart!, DateTime.parse(date));
+                final wp = _routine.program!.weekProgram(week);
+                parts.add('Week $week · ${wp.phase}');
+                parts.add('Walk: ${wp.walkingTarget}');
+              }
+              return Text(
+                parts.join(' · '),
+                style: TextStyle(
+                    color: AppColors.textMuted, fontSize: 13),
+              );
+            })
           else
             Text(
               hasExerciseData
@@ -703,7 +714,7 @@ class CalendarScreenState extends State<CalendarScreen> {
               onSelect: _setSelectedBackPain,
             ),
           ],
-          if (editable || hasExerciseData) ...[
+          if (editable || hasExerciseData || isFuture) ...[
             const SizedBox(height: 12),
             ...allExercises.map((e) {
               final doneSets =
