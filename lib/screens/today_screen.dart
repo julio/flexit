@@ -1010,11 +1010,28 @@ class _TimerSetButtonState extends State<_TimerSetButton>
         _running = false;
         _endTime = null;
       });
-      HapticFeedback.heavyImpact();
+      _fireCompletionCue();
       widget.onComplete();
     } else {
       setState(() {});
     }
+  }
+
+  /// Distinctive multi-pulse cue so a foreground timer completion is
+  /// noticeable even with the phone on silent. `vibrate()` is iOS's
+  /// alarm-style buzz; the two `heavyImpact`s after it form a quick
+  /// thump-thump rhythm. The background case is handled by the scheduled
+  /// time-sensitive notification, which bypasses silent mode on iOS.
+  void _fireCompletionCue() {
+    HapticFeedback.vibrate();
+    Future.delayed(const Duration(milliseconds: 200), () {
+      if (!mounted) return;
+      HapticFeedback.heavyImpact();
+    });
+    Future.delayed(const Duration(milliseconds: 400), () {
+      if (!mounted) return;
+      HapticFeedback.heavyImpact();
+    });
   }
 
   void _start() {
