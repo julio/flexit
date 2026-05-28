@@ -11,6 +11,8 @@ final ValueNotifier<bool> themeIsDark = ValueNotifier<bool>(true);
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // One-shot data migration for the per-side atomic ID format change.
+  await migrateCompletionPerSideV1();
   final dark = await getDarkMode();
   themeIsDark.value = dark;
   if (dark) {

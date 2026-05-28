@@ -488,6 +488,81 @@ void main() {
     });
   });
 
+  group('migrateCompletionPerSideV1', () {
+    test('expands legacy single-side IDs to L/R for sided exercises',
+        () async {
+      SharedPreferences.setMockInitialValues({
+        // hlr-single-knee-chest is now sides=2 — old format had no suffix.
+        'flexit_exercises_2026-05-26': [
+          'hlr-cat-cow',
+          'hlr-single-knee-chest',
+          'hlr-pelvic-tilts',
+        ],
+      });
+      await migrateCompletionPerSideV1();
+      final set = await getCompletedExercises('2026-05-26');
+      expect(set, {
+        'hlr-cat-cow',
+        'hlr-single-knee-chest:L',
+        'hlr-single-knee-chest:R',
+        'hlr-pelvic-tilts',
+      });
+    });
+
+    test('expands set-only suffix to set+side for multi-set sided exercises',
+        () async {
+      SharedPreferences.setMockInitialValues({
+        // hlr-hip-flexor-stretch-reach: sets=2, sides=2; old IDs had only :1 and :2.
+        'flexit_exercises_2026-05-26': [
+          'hlr-hip-flexor-stretch-reach:1',
+          'hlr-hip-flexor-stretch-reach:2',
+        ],
+      });
+      await migrateCompletionPerSideV1();
+      final set = await getCompletedExercises('2026-05-26');
+      expect(set, {
+        'hlr-hip-flexor-stretch-reach:1:L',
+        'hlr-hip-flexor-stretch-reach:1:R',
+        'hlr-hip-flexor-stretch-reach:2:L',
+        'hlr-hip-flexor-stretch-reach:2:R',
+      });
+    });
+
+    test('leaves already-migrated IDs alone', () async {
+      SharedPreferences.setMockInitialValues({
+        'flexit_exercises_2026-05-26': [
+          'hlr-single-knee-chest:L',
+          'hlr-single-knee-chest:R',
+        ],
+      });
+      await migrateCompletionPerSideV1();
+      final set = await getCompletedExercises('2026-05-26');
+      expect(set, {'hlr-single-knee-chest:L', 'hlr-single-knee-chest:R'});
+    });
+
+    test('leaves non-sided exercises alone', () async {
+      SharedPreferences.setMockInitialValues({
+        'flexit_exercises_2026-05-26': ['hlr-cat-cow', 'plank:1', 'plank:2'],
+      });
+      await migrateCompletionPerSideV1();
+      final set = await getCompletedExercises('2026-05-26');
+      // plank duration is "60 sec" (no side language) → not migrated.
+      expect(set, {'hlr-cat-cow', 'plank:1', 'plank:2'});
+    });
+
+    test('runs once — second call is a no-op', () async {
+      SharedPreferences.setMockInitialValues({
+        'flexit_exercises_2026-05-26': ['hlr-single-knee-chest'],
+      });
+      await migrateCompletionPerSideV1();
+      // Now manually re-add the legacy ID; second migration should not touch it.
+      await saveCompletedExercises('2026-05-26', {'hlr-single-knee-chest'});
+      await migrateCompletionPerSideV1();
+      final set = await getCompletedExercises('2026-05-26');
+      expect(set, {'hlr-single-knee-chest'});
+    });
+  });
+
   group('session pause state', () {
     test('getPauseTotal returns zero when nothing stored', () async {
       expect(await getPauseTotal('2026-05-27'), Duration.zero);

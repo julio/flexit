@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'exercises.dart';
+import '../models/exercise.dart';
 import '../models/session.dart';
 
 const _sessionsKey = 'flexit_sessions';
@@ -15,6 +16,7 @@ const _calendarMeasurementKey = 'flexit_calendar_measurement';
 const _darkModeKey = 'flexit_dark_mode';
 const _routineKey = 'flexit_routine';
 const _programStartPrefix = 'flexit_program_start_';
+const _migrationPerSideKey = 'flexit_migration_per_side_v1';
 
 /// Which single measurement the calendar should render. The order is also the
 /// swipe order (right = next, left = previous).
@@ -337,4 +339,64 @@ int getLongestStreak(List<Session> sessions) {
   }
 
   return longest;
+}
+
+/// One-shot migration for the per-side atomic ID change. Before commit
+/// 2e8f933 a "30 sec each side" exercise had one atomic ID per set; after,
+/// it has one per (set × side). Existing completion entries like
+/// `hlr-single-knee-chest` or `couch-stretch:1` need to expand to their
+/// `:L` and `:R` variants so previously-completed days stay completed.
+Future<void> migrateCompletionPerSideV1() async {
+  final prefs = await SharedPreferences.getInstance();
+  if (prefs.getBool(_migrationPerSideKey) == true) return;
+
+  // Collect base IDs of every exercise that currently has per-side atomic
+  // IDs (sidesPerSet > 1) across both routines and every program week.
+  final sidedBases = <String>{};
+  for (final routine in routines) {
+    final blocks = <ExerciseBlock>[];
+    if (routine.hasProgram) {
+      blocks.addAll(routine.program!.constantBlocks);
+      for (final week in routine.program!.weeks) {
+        blocks.add(week.strengthBlock);
+      }
+    } else {
+      blocks.addAll(routine.blocks);
+    }
+    for (final block in blocks) {
+      for (final ex in block.exercises) {
+        if (ex.sidesPerSet > 1) sidedBases.add(ex.id);
+      }
+    }
+  }
+
+  for (final key in prefs.getKeys()) {
+    if (!key.startsWith(_exercisesPrefix)) continue;
+    final raw = prefs.getStringList(key);
+    if (raw == null || raw.isEmpty) continue;
+    final migrated = <String>{};
+    var changed = false;
+    for (final id in raw) {
+      // Already has a side suffix — leave it.
+      if (id.endsWith(':L') || id.endsWith(':R')) {
+        migrated.add(id);
+        continue;
+      }
+      // Find the base exercise id (everything before the first ':').
+      final colon = id.indexOf(':');
+      final baseId = colon == -1 ? id : id.substring(0, colon);
+      if (sidedBases.contains(baseId)) {
+        migrated.add('$id:L');
+        migrated.add('$id:R');
+        changed = true;
+      } else {
+        migrated.add(id);
+      }
+    }
+    if (changed) {
+      await prefs.setStringList(key, migrated.toList());
+    }
+  }
+
+  await prefs.setBool(_migrationPerSideKey, true);
 }
