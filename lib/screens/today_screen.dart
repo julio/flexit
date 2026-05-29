@@ -45,6 +45,10 @@ class _TodayScreenState extends State<TodayScreen>
   /// back from background after midnight, this won't match `today` anymore
   /// and we reload.
   String _loadedForDate = '';
+  /// Whether the outer workout section (progress + week + start + blocks) is
+  /// expanded. Default collapsed so the screen stays tight at a glance; user
+  /// taps the header to reveal the workout when they're ready to start.
+  bool _workoutExpanded = false;
 
   @override
   void initState() {
@@ -184,6 +188,11 @@ class _TodayScreenState extends State<TodayScreen>
   Future<void> _setWeightUnit(String unit) async {
     await setWeightUnit(unit);
     if (mounted) setState(() => _weightUnit = unit);
+  }
+
+  void _toggleWorkoutExpanded() {
+    if (_done) return;
+    setState(() => _workoutExpanded = !_workoutExpanded);
   }
 
   void _updateTicker() {
@@ -458,30 +467,46 @@ class _TodayScreenState extends State<TodayScreen>
               ),
             ),
           ),
-          // Exercise section: progress + week banner + start/running + blocks.
-          if (totalExercises > 0)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: completedCount / totalExercises,
-                    backgroundColor: AppColors.cardBorder,
-                    color: _done ? AppColors.success : AppColors.accent,
-                    minHeight: 4,
+          // Whole exercise section folds into a single collapsible group —
+          // header (and the done banner when finished) is the only thing
+          // showing when collapsed; expanding reveals progress + week info +
+          // start/run controls + the block list.
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+              child: _WorkoutHeader(
+                done: _done,
+                expanded: _workoutExpanded && !_done,
+                completedCount: completedCount,
+                totalExercises: totalExercises,
+                finalElapsed: _finalElapsed,
+                onTap: _toggleWorkoutExpanded,
+              ),
+            ),
+          ),
+          if (_workoutExpanded && !_done) ...[
+            if (totalExercises > 0)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: completedCount / totalExercises,
+                      backgroundColor: AppColors.cardBorder,
+                      color: AppColors.accent,
+                      minHeight: 4,
+                    ),
                   ),
                 ),
               ),
-            ),
-          if (_weekProgram != null)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-                child: _WeekBanner(week: _weekProgram!),
+            if (_weekProgram != null)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                  child: _WeekBanner(week: _weekProgram!),
+                ),
               ),
-            ),
-          if (!_done)
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
@@ -495,54 +520,22 @@ class _TodayScreenState extends State<TodayScreen>
                       ),
               ),
             ),
-          if (_done)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-                child: Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: AppColors.successDim,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                        color: AppColors.success.withValues(alpha: 0.25)),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) => _BlockCard(
+                    block: _blocks[index],
+                    completedExercises: _completedExercises,
+                    timerSeconds: _timerSeconds,
+                    repCounts: _repCounts,
+                    onToggle: _toggleExercise,
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.check_circle,
-                          color: AppColors.success, size: 18),
-                      const SizedBox(width: 8),
-                      Text(
-                        _finalElapsed != null
-                            ? 'Done in ${_formatElapsed(_finalElapsed!)}'
-                            : 'All done for today',
-                        style: TextStyle(
-                          color: AppColors.success,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15,
-                        ),
-                      ),
-                    ],
-                  ),
+                  childCount: _blocks.length,
                 ),
               ),
             ),
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-            sliver: SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, index) => _BlockCard(
-                  block: _blocks[index],
-                  completedExercises: _completedExercises,
-                  timerSeconds: _timerSeconds,
-                  repCounts: _repCounts,
-                  onToggle: _toggleExercise,
-                ),
-                childCount: _blocks.length,
-              ),
-            ),
-          ),
+          ],
           // Back pain after the workout — typically rated post-session.
           SliverToBoxAdapter(
             child: Padding(
@@ -1006,6 +999,111 @@ String _formatElapsed(Duration d) {
   final m = d.inMinutes;
   final s = d.inSeconds % 60;
   return '$m:${s.toString().padLeft(2, '0')}';
+}
+
+class _WorkoutHeader extends StatelessWidget {
+  final bool done;
+  final bool expanded;
+  final int completedCount;
+  final int totalExercises;
+  final Duration? finalElapsed;
+  final VoidCallback onTap;
+
+  const _WorkoutHeader({
+    required this.done,
+    required this.expanded,
+    required this.completedCount,
+    required this.totalExercises,
+    required this.finalElapsed,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (done) {
+      // Workout complete: a single tight banner replaces the entire section.
+      return Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.successDim,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+              color: AppColors.success.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.check_circle,
+                color: AppColors.success, size: 20),
+            const SizedBox(width: 8),
+            Text(
+              finalElapsed != null
+                  ? 'Done in ${_formatElapsed(finalElapsed!)}'
+                  : 'All done for today',
+              style: TextStyle(
+                color: AppColors.success,
+                fontWeight: FontWeight.w800,
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    final subtitle = totalExercises > 0
+        ? '$completedCount/$totalExercises done'
+        : 'No exercises today';
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.cardBorder),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.fitness_center,
+                color: AppColors.accent, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "TODAY'S WORKOUT",
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.accent,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              expanded
+                  ? Icons.keyboard_arrow_up
+                  : Icons.keyboard_arrow_down,
+              color: AppColors.textSecondary,
+              size: 22,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _StartButton extends StatelessWidget {
