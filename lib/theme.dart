@@ -97,15 +97,24 @@ class AppColors {
     return Color.lerp(_backPainStops[1], _backPainStops[2], (v - 5) / 5.0)!;
   }
 
-  /// Picks a high-contrast outline color for a selected pill/tile sitting on
-  /// [fill]. The rating selectors paint each tile a different color (a
-  /// heatmap), so a single fixed selection ring (e.g. white) disappears on
-  /// light fills. This returns black on light fills, white on dark — always
-  /// visible.
+  /// Inner border for a selected tile — contrasts the tile's own [fill].
+  /// Pair with [selectionHaloOn] for the outer "halo" ring that contrasts
+  /// the app canvas. Together they form a double-stroke ring so at least
+  /// one stroke is always visible regardless of tile color.
   static Color selectionRingOn(Color fill) {
     return ThemeData.estimateBrightnessForColor(fill) == Brightness.light
         ? Colors.black87
         : Colors.white;
+  }
+
+  /// Outer halo color for selected tiles — contrasts the *canvas* (which is
+  /// dark in dark mode, light in light mode), not the tile. Render as a flat
+  /// `BoxShadow` with `spreadRadius` and `blurRadius: 0`.
+  static Color selectionHaloOn(Color fill) {
+    // Canvas darkness drives this, not the tile. In dark mode the canvas is
+    // near-black so use white; in light mode the canvas is near-white so use
+    // black87.
+    return isDark ? Colors.white : Colors.black87;
   }
 }
 

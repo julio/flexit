@@ -991,6 +991,16 @@ class _CompactPRating extends StatelessWidget {
                             : Colors.transparent,
                         width: 3,
                       ),
+                      boxShadow: value == v
+                          ? [
+                              BoxShadow(
+                                color: AppColors.selectionHaloOn(
+                                    AppColors.pColor(v)),
+                                spreadRadius: 2,
+                                blurRadius: 0,
+                              ),
+                            ]
+                          : null,
                     ),
                     alignment: Alignment.center,
                     child: Text(
@@ -1040,6 +1050,15 @@ class _CompactAlcohol extends StatelessWidget {
                     : Colors.transparent,
                 width: 3,
               ),
+              boxShadow: selected
+                  ? [
+                      BoxShadow(
+                        color: AppColors.selectionHaloOn(fill),
+                        spreadRadius: 2,
+                        blurRadius: 0,
+                      ),
+                    ]
+                  : null,
             ),
             alignment: Alignment.center,
             child: Text(
@@ -1215,6 +1234,16 @@ class _CompactBackPain extends StatelessWidget {
                             : Colors.transparent,
                         width: 3,
                       ),
+                      boxShadow: value == v
+                          ? [
+                              BoxShadow(
+                                color: AppColors.selectionHaloOn(
+                                    AppColors.backPainColor(v)),
+                                spreadRadius: 2,
+                                blurRadius: 0,
+                              ),
+                            ]
+                          : null,
                     ),
                     alignment: Alignment.center,
                     child: Text(

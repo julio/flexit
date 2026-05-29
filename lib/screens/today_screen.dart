@@ -1356,6 +1356,15 @@ class _PRatingButton extends StatelessWidget {
                 : Colors.transparent,
             width: 3,
           ),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: AppColors.selectionHaloOn(bg),
+                    spreadRadius: 2,
+                    blurRadius: 0,
+                  ),
+                ]
+              : null,
         ),
         alignment: Alignment.center,
         child: Text(
@@ -1461,6 +1470,15 @@ class _AlcoholBinaryButton extends StatelessWidget {
                 : Colors.transparent,
             width: 3,
           ),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: AppColors.selectionHaloOn(fill),
+                    spreadRadius: 2,
+                    blurRadius: 0,
+                  ),
+                ]
+              : null,
         ),
         alignment: Alignment.center,
         child: Text(
@@ -1578,6 +1596,15 @@ class _BackPainButton extends StatelessWidget {
                 : Colors.transparent,
             width: 3,
           ),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: AppColors.selectionHaloOn(fill),
+                    spreadRadius: 2,
+                    blurRadius: 0,
+                  ),
+                ]
+              : null,
         ),
         alignment: Alignment.center,
         child: Text(
