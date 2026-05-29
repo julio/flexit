@@ -423,11 +423,46 @@ class _TodayScreenState extends State<TodayScreen>
               ),
             ),
           ),
-          // Progress bar
+          // Order mirrors a typical day:
+          //   1. drinks yesterday (logged on waking up)
+          //   2. weight (post-toilet morning weigh-in)
+          //   3. p (mood right now)
+          //   4. exercises (the workout itself, with progress + week banner)
+          //   5. back pain (logged after the session)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+              child: _AlcoholCard(
+                value: _alcoholYesterday,
+                onSelect: _setAlcoholYesterday,
+              ),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+              child: _WeightCard(
+                grams: _weightGrams,
+                unit: _weightUnit,
+                onChangeGrams: _setWeightGrams,
+                onChangeUnit: _setWeightUnit,
+              ),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+              child: _PRatingCard(
+                value: _pRating,
+                onSelect: _setPRating,
+              ),
+            ),
+          ),
+          // Exercise section: progress + week banner + start/running + blocks.
           if (totalExercises > 0)
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(4),
                   child: LinearProgressIndicator(
@@ -446,44 +481,6 @@ class _TodayScreenState extends State<TodayScreen>
                 child: _WeekBanner(week: _weekProgram!),
               ),
             ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-              child: _PRatingCard(
-                value: _pRating,
-                onSelect: _setPRating,
-              ),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-              child: _AlcoholCard(
-                value: _alcoholYesterday,
-                onSelect: _setAlcoholYesterday,
-              ),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-              child: _BackPainCard(
-                value: _backPain,
-                onSelect: _setBackPain,
-              ),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-              child: _WeightCard(
-                grams: _weightGrams,
-                unit: _weightUnit,
-                onChangeGrams: _setWeightGrams,
-                onChangeUnit: _setWeightUnit,
-              ),
-            ),
-          ),
           if (!_done)
             SliverToBoxAdapter(
               child: Padding(
@@ -532,7 +529,7 @@ class _TodayScreenState extends State<TodayScreen>
               ),
             ),
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
             sliver: SliverList(
               delegate: SliverChildBuilderDelegate(
                 (context, index) => _BlockCard(
@@ -543,6 +540,16 @@ class _TodayScreenState extends State<TodayScreen>
                   onToggle: _toggleExercise,
                 ),
                 childCount: _blocks.length,
+              ),
+            ),
+          ),
+          // Back pain after the workout — typically rated post-session.
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
+              child: _BackPainCard(
+                value: _backPain,
+                onSelect: _setBackPain,
               ),
             ),
           ),
@@ -1368,17 +1375,15 @@ class _AlcoholCard extends StatelessWidget {
 
   const _AlcoholCard({required this.value, required this.onSelect});
 
-  static const _options = [0, 1, 2, 3, 4];
-  static const _labels = {
-    0: 'none',
-    1: 'a sip',
-    2: 'a glass',
-    3: 'a few glasses',
-    4: 'drunk',
-  };
+  /// Binary semantics: 0 = no drinks, 1 = drinks. Storage stays int-capable
+  /// so legacy multi-level entries (2..4) still render on the calendar with
+  /// their gradient color.
+  static const _noDrinks = 0;
+  static const _drinks = 1;
 
   @override
   Widget build(BuildContext context) {
+    final selected = value;
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
       decoration: BoxDecoration(
@@ -1389,40 +1394,34 @@ class _AlcoholCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Drinks yesterday',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.text,
-                ),
-              ),
-              if (value != null)
-                Text(
-                  _labels[value]!,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-            ],
+          Text(
+            'Drinks yesterday',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppColors.text,
+            ),
           ),
           const SizedBox(height: 10),
           Row(
             children: [
-              for (final v in _options) ...[
-                if (v != _options.first) const SizedBox(width: 6),
-                Expanded(
-                  child: _AlcoholButton(
-                    level: v,
-                    selected: value == v,
-                    onTap: () => onSelect(v),
-                  ),
+              Expanded(
+                child: _AlcoholBinaryButton(
+                  label: 'No drinks',
+                  selected: selected == _noDrinks,
+                  fill: AppColors.alcoholColor(_noDrinks),
+                  onTap: () => onSelect(_noDrinks),
                 ),
-              ],
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _AlcoholBinaryButton(
+                  label: 'Drinks',
+                  selected: selected != null && selected > 0,
+                  fill: AppColors.alcoholColor(_drinks),
+                  onTap: () => onSelect(_drinks),
+                ),
+              ),
             ],
           ),
         ],
@@ -1431,28 +1430,28 @@ class _AlcoholCard extends StatelessWidget {
   }
 }
 
-class _AlcoholButton extends StatelessWidget {
-  final int level;
+class _AlcoholBinaryButton extends StatelessWidget {
+  final String label;
   final bool selected;
+  final Color fill;
   final VoidCallback onTap;
 
-  const _AlcoholButton({
-    required this.level,
+  const _AlcoholBinaryButton({
+    required this.label,
     required this.selected,
+    required this.fill,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final bg = AppColors.alcoholColor(level);
-    final textColor = Colors.black87;
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
-        height: 38,
+        height: 42,
         decoration: BoxDecoration(
-          color: bg,
+          color: fill,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: selected ? AppColors.text : Colors.transparent,
@@ -1461,10 +1460,10 @@ class _AlcoholButton extends StatelessWidget {
         ),
         alignment: Alignment.center,
         child: Text(
-          '$level',
-          style: TextStyle(
-            color: textColor,
-            fontSize: 15,
+          label,
+          style: const TextStyle(
+            color: Colors.black87,
+            fontSize: 14,
             fontWeight: FontWeight.w800,
           ),
         ),

@@ -1016,72 +1016,58 @@ class _CompactAlcohol extends StatelessWidget {
 
   const _CompactAlcohol({required this.value, required this.onSelect});
 
-  static const _options = [0, 1, 2, 3, 4];
-  static const _labels = {
-    0: 'none',
-    1: 'a sip',
-    2: 'a glass',
-    3: 'a few glasses',
-    4: 'drunk',
-  };
+  // Binary: 0 (no drinks) or 1 (drinks). Storage stays int-capable so legacy
+  // multi-level entries still render on the calendar with their gradient.
 
   @override
   Widget build(BuildContext context) {
+    Widget chip(String label, int target, {required bool selected}) {
+      return Expanded(
+        child: GestureDetector(
+          onTap: () => onSelect(target),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            height: 36,
+            decoration: BoxDecoration(
+              color: AppColors.alcoholColor(target),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: selected ? AppColors.text : Colors.transparent,
+                width: 2,
+              ),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: Colors.black87,
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'DRINKS',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary,
-                letterSpacing: 0.5,
-              ),
-            ),
-            if (value != null)
-              Text(
-                _labels[value]!,
-                style: TextStyle(
-                    fontSize: 11, color: AppColors.textSecondary),
-              ),
-          ],
+        Text(
+          'DRINKS',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textSecondary,
+            letterSpacing: 0.5,
+          ),
         ),
         const SizedBox(height: 6),
         Row(
           children: [
-            for (final v in _options) ...[
-              if (v != _options.first) const SizedBox(width: 6),
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => onSelect(v),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 120),
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: AppColors.alcoholColor(v),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: value == v ? AppColors.text : Colors.transparent,
-                        width: 2,
-                      ),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      '$v',
-                      style: const TextStyle(
-                        color: Colors.black87,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
+            chip('No drinks', 0, selected: value == 0),
+            const SizedBox(width: 6),
+            chip('Drinks', 1, selected: value != null && value! > 0),
           ],
         ),
       ],
