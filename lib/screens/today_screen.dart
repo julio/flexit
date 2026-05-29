@@ -19,7 +19,8 @@ class TodayScreen extends StatefulWidget {
   State<TodayScreen> createState() => _TodayScreenState();
 }
 
-class _TodayScreenState extends State<TodayScreen> {
+class _TodayScreenState extends State<TodayScreen>
+    with WidgetsBindingObserver {
   bool _done = false;
   int _streak = 0;
   bool _loading = true;
@@ -38,17 +39,34 @@ class _TodayScreenState extends State<TodayScreen> {
   Routine _routine = routines.first;
   List<ExerciseBlock> _blocks = const [];
   WeekProgram? _weekProgram;
+  /// The system date the current state was loaded for. When the app comes
+  /// back from background after midnight, this won't match `today` anymore
+  /// and we reload.
+  String _loadedForDate = '';
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadState();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _ticker?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) return;
+    // If the date changed while backgrounded, blow away the stale state and
+    // reload — otherwise yesterday's completion banner sticks around.
+    final todayKey = formatDate(DateTime.now());
+    if (todayKey != _loadedForDate) {
+      _loadState();
+    }
   }
 
   Future<void> _loadState() async {
@@ -118,6 +136,7 @@ class _TodayScreenState extends State<TodayScreen> {
         _routine = routine;
         _blocks = blocks;
         _weekProgram = weekProgram;
+        _loadedForDate = today;
         _loading = false;
       });
       _updateTicker();
