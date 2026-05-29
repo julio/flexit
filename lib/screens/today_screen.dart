@@ -35,6 +35,8 @@ class _TodayScreenState extends State<TodayScreen>
   int? _pRating;
   int? _alcoholYesterday;
   int? _backPain;
+  int? _weightGrams;
+  String _weightUnit = 'kg';
   String _yesterdayKey = '';
   Routine _routine = routines.first;
   List<ExerciseBlock> _blocks = const [];
@@ -82,6 +84,8 @@ class _TodayScreenState extends State<TodayScreen>
     final pRating = await getPRating(today);
     final alcoholYesterday = await getAlcoholRating(yesterday);
     final backPain = await getBackPainRating(today);
+    final weightGrams = await getWeightGrams(today);
+    final weightUnit = await getWeightUnit();
     final routineId = await getActiveRoutineId();
     final routine = routineById(routineId);
 
@@ -132,6 +136,8 @@ class _TodayScreenState extends State<TodayScreen>
         _pRating = pRating;
         _alcoholYesterday = alcoholYesterday;
         _backPain = backPain;
+        _weightGrams = weightGrams;
+        _weightUnit = weightUnit;
         _yesterdayKey = yesterday;
         _routine = routine;
         _blocks = blocks;
@@ -162,6 +168,22 @@ class _TodayScreenState extends State<TodayScreen>
     await setBackPainRating(today, value);
     HapticFeedback.lightImpact();
     if (mounted) setState(() => _backPain = value);
+  }
+
+  Future<void> _setWeightGrams(int? grams) async {
+    final today = formatDate(DateTime.now());
+    if (grams == null) {
+      await clearWeight(today);
+    } else {
+      await setWeightGrams(today, grams);
+    }
+    HapticFeedback.lightImpact();
+    if (mounted) setState(() => _weightGrams = grams);
+  }
+
+  Future<void> _setWeightUnit(String unit) async {
+    await setWeightUnit(unit);
+    if (mounted) setState(() => _weightUnit = unit);
   }
 
   void _updateTicker() {
@@ -444,10 +466,21 @@ class _TodayScreenState extends State<TodayScreen>
           ),
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
               child: _BackPainCard(
                 value: _backPain,
                 onSelect: _setBackPain,
+              ),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+              child: _WeightCard(
+                grams: _weightGrams,
+                unit: _weightUnit,
+                onChangeGrams: _setWeightGrams,
+                onChangeUnit: _setWeightUnit,
               ),
             ),
           ),
@@ -1619,6 +1652,206 @@ class _WeekBanner extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _WeightCard extends StatefulWidget {
+  final int? grams;
+  final String unit; // 'kg' or 'lb'
+  final ValueChanged<int?> onChangeGrams;
+  final ValueChanged<String> onChangeUnit;
+
+  const _WeightCard({
+    required this.grams,
+    required this.unit,
+    required this.onChangeGrams,
+    required this.onChangeUnit,
+  });
+
+  @override
+  State<_WeightCard> createState() => _WeightCardState();
+}
+
+class _WeightCardState extends State<_WeightCard> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: _displayValue());
+  }
+
+  @override
+  void didUpdateWidget(covariant _WeightCard old) {
+    super.didUpdateWidget(old);
+    // Reflect external changes (e.g. unit toggle, or value set elsewhere).
+    final next = _displayValue();
+    if (_controller.text != next) {
+      _controller.text = next;
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  String _displayValue() {
+    final g = widget.grams;
+    if (g == null) return '';
+    final v = widget.unit == 'kg' ? gramsToKg(g) : gramsToLb(g);
+    return v.toStringAsFixed(1);
+  }
+
+  String _secondaryDisplay() {
+    final g = widget.grams;
+    if (g == null) return '';
+    if (widget.unit == 'kg') {
+      return '${gramsToLb(g).toStringAsFixed(1)} lb';
+    }
+    return '${gramsToKg(g).toStringAsFixed(1)} kg';
+  }
+
+  void _commit(String raw) {
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) {
+      widget.onChangeGrams(null);
+      return;
+    }
+    final parsed = double.tryParse(trimmed.replaceAll(',', '.'));
+    if (parsed == null || parsed <= 0) return;
+    final grams = widget.unit == 'kg' ? kgToGrams(parsed) : lbToGrams(parsed);
+    widget.onChangeGrams(grams);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.cardBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Weight',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.text,
+                ),
+              ),
+              _UnitToggle(
+                unit: widget.unit,
+                onChanged: widget.onChangeUnit,
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _controller,
+                  keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true),
+                  textInputAction: TextInputAction.done,
+                  style: TextStyle(
+                    color: AppColors.text,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                  decoration: InputDecoration(
+                    hintText: '—',
+                    hintStyle: TextStyle(color: AppColors.textMuted),
+                    isDense: true,
+                    border: InputBorder.none,
+                    suffixText: widget.unit,
+                    suffixStyle: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  onSubmitted: _commit,
+                  onTapOutside: (_) {
+                    FocusManager.instance.primaryFocus?.unfocus();
+                    _commit(_controller.text);
+                  },
+                ),
+              ),
+              if (widget.grams != null) ...[
+                const SizedBox(width: 10),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Text(
+                    _secondaryDisplay(),
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _UnitToggle extends StatelessWidget {
+  final String unit;
+  final ValueChanged<String> onChanged;
+
+  const _UnitToggle({required this.unit, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    Widget chip(String value) {
+      final selected = unit == value;
+      return GestureDetector(
+        onTap: selected ? null : () => onChanged(value),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.accent : Colors.transparent,
+            borderRadius: BorderRadius.circular(7),
+          ),
+          child: Text(
+            value,
+            style: TextStyle(
+              color: selected ? Colors.white : AppColors.textSecondary,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: AppColors.bg,
+        borderRadius: BorderRadius.circular(9),
+        border: Border.all(color: AppColors.cardBorder),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [chip('kg'), const SizedBox(width: 2), chip('lb')],
       ),
     );
   }

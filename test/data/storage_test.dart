@@ -452,8 +452,9 @@ void main() {
       expect(await getCalendarMeasurement(), calendarMeasurements.first);
     });
 
-    test('all four measurements are present', () async {
-      expect(calendarMeasurements, ['completion', 'p', 'drinks', 'backpain']);
+    test('all measurements present and in swipe order', () async {
+      expect(calendarMeasurements,
+          ['completion', 'p', 'drinks', 'backpain', 'weight']);
     });
   });
 
@@ -485,6 +486,75 @@ void main() {
         'flexit_routine': 'something-unknown',
       });
       expect(await getActiveRoutineId(), defaultRoutineId);
+    });
+  });
+
+  group('weight', () {
+    test('grams round-trip', () async {
+      await setWeightGrams('2026-05-29', 75500);
+      expect(await getWeightGrams('2026-05-29'), 75500);
+    });
+
+    test('returns null when no weight saved', () async {
+      expect(await getWeightGrams('2026-05-29'), isNull);
+    });
+
+    test('clearWeight removes the entry', () async {
+      await setWeightGrams('2026-05-29', 75500);
+      await clearWeight('2026-05-29');
+      expect(await getWeightGrams('2026-05-29'), isNull);
+    });
+
+    test('getAllWeightGrams returns map keyed by date', () async {
+      await setWeightGrams('2026-05-27', 75300);
+      await setWeightGrams('2026-05-28', 75200);
+      await setWeightGrams('2026-05-29', 75500);
+      final all = await getAllWeightGrams();
+      expect(all, {
+        '2026-05-27': 75300,
+        '2026-05-28': 75200,
+        '2026-05-29': 75500,
+      });
+    });
+
+    test('unit defaults to kg', () async {
+      expect(await getWeightUnit(), 'kg');
+    });
+
+    test('unit persists kg or lb', () async {
+      await setWeightUnit('lb');
+      expect(await getWeightUnit(), 'lb');
+      await setWeightUnit('kg');
+      expect(await getWeightUnit(), 'kg');
+    });
+
+    test('falls back to kg for unknown stored value', () async {
+      SharedPreferences.setMockInitialValues({
+        'flexit_weight_unit': 'oz',
+      });
+      expect(await getWeightUnit(), 'kg');
+    });
+
+    test('kg ↔ grams conversion is exact and reversible at 1-decimal kg',
+        () {
+      for (var i = 500; i <= 1500; i += 7) {
+        final kg = i / 10.0; // 50.0, 50.7, 51.4, ...
+        final grams = kgToGrams(kg);
+        expect(gramsToKg(grams), closeTo(kg, 0.0011));
+      }
+    });
+
+    test('lb ↔ grams conversion is reversible at 1-decimal lb', () {
+      for (var i = 1100; i <= 3300; i += 11) {
+        final lb = i / 10.0;
+        final grams = lbToGrams(lb);
+        expect(gramsToLb(grams), closeTo(lb, 0.005));
+      }
+    });
+
+    test('1 kg = 1000 g exactly', () {
+      expect(kgToGrams(1), 1000);
+      expect(gramsToKg(1000), 1);
     });
   });
 

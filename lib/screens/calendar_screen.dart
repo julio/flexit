@@ -6,6 +6,7 @@ import '../models/exercise.dart';
 import '../models/session.dart';
 import '../theme.dart';
 import 'settings_screen.dart';
+import 'weight_chart_screen.dart';
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
@@ -20,6 +21,8 @@ class CalendarScreenState extends State<CalendarScreen> {
   Map<String, int> _pRatings = {};
   Map<String, int> _alcoholRatings = {};
   Map<String, int> _backPainRatings = {};
+  Map<String, int> _weightGrams = {};
+  String _weightUnit = 'kg';
   String _measurement = calendarMeasurements.first;
   Routine _routine = routines.first;
   DateTime? _programStart;
@@ -39,6 +42,8 @@ class CalendarScreenState extends State<CalendarScreen> {
     final pRatings = await getAllPRatings();
     final alcoholRatings = await getAllAlcoholRatings();
     final backPainRatings = await getAllBackPainRatings();
+    final weightGrams = await getAllWeightGrams();
+    final weightUnit = await getWeightUnit();
     final measurement = await getCalendarMeasurement();
     final routineId = await getActiveRoutineId();
     final routine = routineById(routineId);
@@ -51,6 +56,8 @@ class CalendarScreenState extends State<CalendarScreen> {
         _pRatings = pRatings;
         _alcoholRatings = alcoholRatings;
         _backPainRatings = backPainRatings;
+        _weightGrams = weightGrams;
+        _weightUnit = weightUnit;
         _measurement = measurement;
         _routine = routine;
         _programStart = programStart;
@@ -116,6 +123,22 @@ class CalendarScreenState extends State<CalendarScreen> {
     }
   }
 
+  Future<void> _setSelectedWeight(int? grams) async {
+    final date = _selectedDate;
+    if (date == null) return;
+    if (grams == null) {
+      await clearWeight(date);
+      if (mounted) {
+        setState(() => _weightGrams = {..._weightGrams}..remove(date));
+      }
+    } else {
+      await setWeightGrams(date, grams);
+      if (mounted) {
+        setState(() => _weightGrams = {..._weightGrams, date: grams});
+      }
+    }
+  }
+
   /// Long-press shortcut on a day cell: pop a sheet with just the value
   /// selector for the currently-active measurement.
   Future<void> _quickEditForDate(String dateStr) async {
@@ -160,6 +183,29 @@ class CalendarScreenState extends State<CalendarScreen> {
                     setSheetState(() {});
                     setState(() =>
                         _backPainRatings = {..._backPainRatings, dateStr: v});
+                  },
+                );
+                break;
+              case 'weight':
+                body = _CompactWeight(
+                  grams: _weightGrams[dateStr],
+                  unit: _weightUnit,
+                  onChange: (g) async {
+                    if (g == null) {
+                      await clearWeight(dateStr);
+                    } else {
+                      await setWeightGrams(dateStr, g);
+                    }
+                    setSheetState(() {});
+                    setState(() {
+                      final next = {..._weightGrams};
+                      if (g == null) {
+                        next.remove(dateStr);
+                      } else {
+                        next[dateStr] = g;
+                      }
+                      _weightGrams = next;
+                    });
                   },
                 );
                 break;
@@ -321,6 +367,47 @@ class CalendarScreenState extends State<CalendarScreen> {
             onPrev: () => _cycleMeasurement(-1),
             onNext: () => _cycleMeasurement(1),
           ),
+          if (_measurement == 'weight' && _weightGrams.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            GestureDetector(
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => WeightChartScreen(
+                      weights: _weightGrams,
+                      unit: _weightUnit,
+                    ),
+                  ),
+                );
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.accentDim,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                      color: AppColors.accent.withValues(alpha: 0.4)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.show_chart,
+                        color: AppColors.accent, size: 16),
+                    const SizedBox(width: 6),
+                    Text(
+                      'View evolution chart',
+                      style: TextStyle(
+                        color: AppColors.accent,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
 
           // Calendar
@@ -534,7 +621,10 @@ class CalendarScreenState extends State<CalendarScreen> {
       // Pick a fill color for the cell based on the active measurement.
       // Every measurement now paints the cell — completion uses the same
       // treatment as p / drinks / back pain so the visual language matches.
+      // Weight has no natural heatmap; we replace the day number with the
+      // weight value as the cell content instead.
       Color? cellFill;
+      String? weightLabel;
       switch (_measurement) {
         case 'completion':
           if (isCompleted) {
@@ -559,6 +649,14 @@ class CalendarScreenState extends State<CalendarScreen> {
           final bv = _backPainRatings[dateStr];
           if (bv != null) cellFill = AppColors.backPainColor(bv);
           break;
+        case 'weight':
+          final g = _weightGrams[dateStr];
+          if (g != null) {
+            final v = _weightUnit == 'kg' ? gramsToKg(g) : gramsToLb(g);
+            weightLabel = v.toStringAsFixed(1);
+            cellFill = AppColors.accent.withValues(alpha: 0.25);
+          }
+          break;
       }
 
       final Color dayColor;
@@ -574,6 +672,8 @@ class CalendarScreenState extends State<CalendarScreen> {
         dayColor = isToday ? AppColors.accent : AppColors.text;
       }
       final boldDay = isToday || (cellFill != null);
+      final cellText = weightLabel ?? '$day';
+      final cellFontSize = weightLabel != null ? 12.0 : 14.0;
 
       cells.add(
         GestureDetector(
@@ -596,9 +696,9 @@ class CalendarScreenState extends State<CalendarScreen> {
             ),
             alignment: Alignment.center,
             child: Text(
-              '$day',
+              cellText,
               style: TextStyle(
-                fontSize: 14,
+                fontSize: cellFontSize,
                 fontWeight: boldDay ? FontWeight.w700 : FontWeight.w400,
                 color: dayColor,
               ),
@@ -715,6 +815,12 @@ class CalendarScreenState extends State<CalendarScreen> {
             _CompactBackPain(
               value: _backPainRatings[date],
               onSelect: _setSelectedBackPain,
+            ),
+            const SizedBox(height: 10),
+            _CompactWeight(
+              grams: _weightGrams[date],
+              unit: _weightUnit,
+              onChange: _setSelectedWeight,
             ),
           ],
           if (editable || hasExerciseData || isFuture) ...[
@@ -999,6 +1105,7 @@ class _MeasurementPill extends StatelessWidget {
     'p': 'p rating',
     'drinks': 'Drinks',
     'backpain': 'Back pain',
+    'weight': 'Weight',
   };
 
   static const _icons = {
@@ -1006,6 +1113,7 @@ class _MeasurementPill extends StatelessWidget {
     'p': Icons.local_fire_department_outlined,
     'drinks': Icons.local_bar_outlined,
     'backpain': Icons.healing_outlined,
+    'weight': Icons.monitor_weight_outlined,
   };
 
   @override
@@ -1128,6 +1236,139 @@ class _CompactBackPain extends StatelessWidget {
               ),
             ],
           ],
+        ),
+      ],
+    );
+  }
+}
+
+class _CompactWeight extends StatefulWidget {
+  final int? grams;
+  final String unit;
+  final ValueChanged<int?> onChange;
+
+  const _CompactWeight({
+    required this.grams,
+    required this.unit,
+    required this.onChange,
+  });
+
+  @override
+  State<_CompactWeight> createState() => _CompactWeightState();
+}
+
+class _CompactWeightState extends State<_CompactWeight> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: _display());
+  }
+
+  @override
+  void didUpdateWidget(covariant _CompactWeight old) {
+    super.didUpdateWidget(old);
+    final next = _display();
+    if (_controller.text != next) _controller.text = next;
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  String _display() {
+    final g = widget.grams;
+    if (g == null) return '';
+    final v = widget.unit == 'kg' ? gramsToKg(g) : gramsToLb(g);
+    return v.toStringAsFixed(1);
+  }
+
+  void _commit(String raw) {
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) {
+      widget.onChange(null);
+      return;
+    }
+    final parsed = double.tryParse(trimmed.replaceAll(',', '.'));
+    if (parsed == null || parsed <= 0) return;
+    final grams =
+        widget.unit == 'kg' ? kgToGrams(parsed) : lbToGrams(parsed);
+    widget.onChange(grams);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final g = widget.grams;
+    final secondary = g == null
+        ? ''
+        : (widget.unit == 'kg'
+            ? '${gramsToLb(g).toStringAsFixed(1)} lb'
+            : '${gramsToKg(g).toStringAsFixed(1)} kg');
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'WEIGHT',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+                letterSpacing: 0.5,
+              ),
+            ),
+            if (g != null)
+              Text(
+                secondary,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+            color: AppColors.bg,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.cardBorder),
+          ),
+          child: TextField(
+            controller: _controller,
+            keyboardType:
+                const TextInputType.numberWithOptions(decimal: true),
+            textInputAction: TextInputAction.done,
+            style: TextStyle(
+              color: AppColors.text,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+            decoration: InputDecoration(
+              hintText: '—',
+              hintStyle: TextStyle(color: AppColors.textMuted),
+              isDense: true,
+              border: InputBorder.none,
+              suffixText: widget.unit,
+              suffixStyle: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            onSubmitted: _commit,
+            onTapOutside: (_) {
+              FocusManager.instance.primaryFocus?.unfocus();
+              _commit(_controller.text);
+            },
+          ),
         ),
       ],
     );

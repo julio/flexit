@@ -12,6 +12,8 @@ const _startPrefix = 'flexit_start_';
 const _pRatingPrefix = 'flexit_p_';
 const _alcoholPrefix = 'flexit_alc_';
 const _backPainPrefix = 'flexit_bp_';
+const _weightPrefix = 'flexit_weight_'; // stored as integer grams
+const _weightUnitKey = 'flexit_weight_unit'; // 'kg' or 'lb'
 const _calendarMeasurementKey = 'flexit_calendar_measurement';
 const _darkModeKey = 'flexit_dark_mode';
 const _routineKey = 'flexit_routine';
@@ -20,7 +22,22 @@ const _migrationPerSideKey = 'flexit_migration_per_side_v1';
 
 /// Which single measurement the calendar should render. The order is also the
 /// swipe order (right = next, left = previous).
-const calendarMeasurements = ['completion', 'p', 'drinks', 'backpain'];
+const calendarMeasurements = [
+  'completion',
+  'p',
+  'drinks',
+  'backpain',
+  'weight',
+];
+
+/// Grams ↔ kg / lb conversions. Storage is always in integer grams so we
+/// never mishandle floating-point precision across reads.
+const double gramsPerKg = 1000.0;
+const double gramsPerLb = 453.59237;
+double gramsToKg(int g) => g / gramsPerKg;
+double gramsToLb(int g) => g / gramsPerLb;
+int kgToGrams(double kg) => (kg * gramsPerKg).round();
+int lbToGrams(double lb) => (lb * gramsPerLb).round();
 
 Future<List<Session>> getSessions() async {
   final prefs = await SharedPreferences.getInstance();
@@ -206,6 +223,48 @@ Future<void> setBackPainRating(String date, int value) async {
   assert(value >= 0 && value <= 10, 'back pain rating must be in [0, 10]');
   final prefs = await SharedPreferences.getInstance();
   await prefs.setInt('$_backPainPrefix$date', value);
+}
+
+Future<int?> getWeightGrams(String date) async {
+  final prefs = await SharedPreferences.getInstance();
+  return prefs.getInt('$_weightPrefix$date');
+}
+
+Future<void> setWeightGrams(String date, int grams) async {
+  assert(grams > 0, 'weight must be positive');
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setInt('$_weightPrefix$date', grams);
+}
+
+Future<void> clearWeight(String date) async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.remove('$_weightPrefix$date');
+}
+
+Future<Map<String, int>> getAllWeightGrams() async {
+  final prefs = await SharedPreferences.getInstance();
+  final result = <String, int>{};
+  for (final key in prefs.getKeys()) {
+    if (!key.startsWith(_weightPrefix)) continue;
+    final value = prefs.getInt(key);
+    if (value == null) continue;
+    result[key.substring(_weightPrefix.length)] = value;
+  }
+  return result;
+}
+
+/// 'kg' (default) or 'lb'. Storage stays in grams either way; the unit
+/// controls input/display only.
+Future<String> getWeightUnit() async {
+  final prefs = await SharedPreferences.getInstance();
+  final raw = prefs.getString(_weightUnitKey);
+  return (raw == 'lb' || raw == 'kg') ? raw! : 'kg';
+}
+
+Future<void> setWeightUnit(String unit) async {
+  assert(unit == 'kg' || unit == 'lb', 'unit must be kg or lb');
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setString(_weightUnitKey, unit);
 }
 
 Future<Map<String, int>> getAllBackPainRatings() async {
