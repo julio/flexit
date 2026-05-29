@@ -96,6 +96,17 @@ class AppColors {
     }
     return Color.lerp(_backPainStops[1], _backPainStops[2], (v - 5) / 5.0)!;
   }
+
+  /// Picks a high-contrast outline color for a selected pill/tile sitting on
+  /// [fill]. The rating selectors paint each tile a different color (a
+  /// heatmap), so a single fixed selection ring (e.g. white) disappears on
+  /// light fills. This returns black on light fills, white on dark — always
+  /// visible.
+  static Color selectionRingOn(Color fill) {
+    return ThemeData.estimateBrightnessForColor(fill) == Brightness.light
+        ? Colors.black87
+        : Colors.white;
+  }
 }
 
 ThemeData buildAppTheme({required bool dark}) {

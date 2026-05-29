@@ -986,8 +986,10 @@ class _CompactPRating extends StatelessWidget {
                       color: AppColors.pColor(v),
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                        color: value == v ? AppColors.text : Colors.transparent,
-                        width: 2,
+                        color: value == v
+                            ? AppColors.selectionRingOn(AppColors.pColor(v))
+                            : Colors.transparent,
+                        width: 3,
                       ),
                     ),
                     alignment: Alignment.center,
@@ -1022,6 +1024,7 @@ class _CompactAlcohol extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Widget chip(String label, int target, {required bool selected}) {
+      final fill = AppColors.alcoholColor(target);
       return Expanded(
         child: GestureDetector(
           onTap: () => onSelect(target),
@@ -1029,11 +1032,13 @@ class _CompactAlcohol extends StatelessWidget {
             duration: const Duration(milliseconds: 120),
             height: 36,
             decoration: BoxDecoration(
-              color: AppColors.alcoholColor(target),
+              color: fill,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
-                color: selected ? AppColors.text : Colors.transparent,
-                width: 2,
+                color: selected
+                    ? AppColors.selectionRingOn(fill)
+                    : Colors.transparent,
+                width: 3,
               ),
             ),
             alignment: Alignment.center,
@@ -1204,8 +1209,11 @@ class _CompactBackPain extends StatelessWidget {
                       color: AppColors.backPainColor(v),
                       borderRadius: BorderRadius.circular(6),
                       border: Border.all(
-                        color: value == v ? AppColors.text : Colors.transparent,
-                        width: 2,
+                        color: value == v
+                            ? AppColors.selectionRingOn(
+                                AppColors.backPainColor(v))
+                            : Colors.transparent,
+                        width: 3,
                       ),
                     ),
                     alignment: Alignment.center,

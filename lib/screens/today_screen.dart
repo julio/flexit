@@ -1351,8 +1351,10 @@ class _PRatingButton extends StatelessWidget {
           color: bg,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: selected ? AppColors.text : Colors.transparent,
-            width: 2,
+            color: selected
+                ? AppColors.selectionRingOn(bg)
+                : Colors.transparent,
+            width: 3,
           ),
         ),
         alignment: Alignment.center,
@@ -1454,8 +1456,10 @@ class _AlcoholBinaryButton extends StatelessWidget {
           color: fill,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: selected ? AppColors.text : Colors.transparent,
-            width: 2,
+            color: selected
+                ? AppColors.selectionRingOn(fill)
+                : Colors.transparent,
+            width: 3,
           ),
         ),
         alignment: Alignment.center,
@@ -1569,8 +1573,10 @@ class _BackPainButton extends StatelessWidget {
           color: fill,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: selected ? AppColors.text : Colors.transparent,
-            width: 2,
+            color: selected
+                ? AppColors.selectionRingOn(fill)
+                : Colors.transparent,
+            width: 3,
           ),
         ),
         alignment: Alignment.center,
