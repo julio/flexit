@@ -559,7 +559,7 @@ class _TodayScreenState extends State<TodayScreen>
   }
 }
 
-class _BlockCard extends StatelessWidget {
+class _BlockCard extends StatefulWidget {
   final ExerciseBlock block;
   final Set<String> completedExercises;
   final Map<String, int> timerSeconds;
@@ -575,57 +575,130 @@ class _BlockCard extends StatelessWidget {
   });
 
   @override
+  State<_BlockCard> createState() => _BlockCardState();
+}
+
+class _BlockCardState extends State<_BlockCard> {
+  /// User tapped the block header to reveal its exercises. Forced back to
+  /// `false` once every exercise in the block is done.
+  bool _userExpanded = false;
+
+  bool get _allDone => widget.block.exercises.every(
+        (e) => e.atomicIds.every(widget.completedExercises.contains),
+      );
+
+  bool get _expanded => _userExpanded && !_allDone;
+
+  int get _doneAtomicCount => widget.block.exercises.fold<int>(
+      0,
+      (sum, e) =>
+          sum +
+          e.atomicIds.where(widget.completedExercises.contains).length);
+
+  int get _totalAtomicCount =>
+      widget.block.exercises.fold<int>(0, (sum, e) => sum + e.atomicIds.length);
+
+  @override
+  void didUpdateWidget(covariant _BlockCard old) {
+    super.didUpdateWidget(old);
+    if (_allDone && _userExpanded) {
+      // Defer to next frame so we don't mutate state during build.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _userExpanded = false);
+      });
+    }
+  }
+
+  void _toggleExpanded() {
+    if (_allDone) return;
+    setState(() => _userExpanded = !_userExpanded);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final allDone = block.exercises.every(
-      (e) => e.atomicIds.every(completedExercises.contains),
-    );
+    final block = widget.block;
+    final allDone = _allDone;
+    final expanded = _expanded;
+    final done = _doneAtomicCount;
+    final total = _totalAtomicCount;
+    final accentColor = allDone ? AppColors.success : AppColors.accent;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 24),
+      padding: const EdgeInsets.only(bottom: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    if (allDone)
-                      const Padding(
-                        padding: EdgeInsets.only(right: 6),
-                        child: Icon(Icons.check_circle,
-                            color: AppColors.success, size: 16),
-                      ),
-                    Text(
-                      block.title.toUpperCase(),
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: allDone ? AppColors.success : AppColors.accent,
-                        letterSpacing: 0.8,
-                      ),
+          GestureDetector(
+            onTap: _toggleExpanded,
+            behavior: HitTestBehavior.opaque,
+            child: Container(
+              padding:
+                  const EdgeInsets.fromLTRB(14, 12, 10, 12),
+              decoration: BoxDecoration(
+                color: AppColors.card,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: allDone
+                      ? AppColors.success.withValues(alpha: 0.3)
+                      : AppColors.cardBorder,
+                ),
+              ),
+              child: Row(
+                children: [
+                  if (allDone)
+                    const Padding(
+                      padding: EdgeInsets.only(right: 6),
+                      child: Icon(Icons.check_circle,
+                          color: AppColors.success, size: 18),
                     ),
-                  ],
-                ),
-                Text(
-                  block.duration,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: AppColors.textSecondary,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          block.title.toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: accentColor,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          allDone
+                              ? '${block.duration} · done'
+                              : '${block.duration} · $done/$total done',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                  if (!allDone)
+                    Icon(
+                      expanded
+                          ? Icons.keyboard_arrow_up
+                          : Icons.keyboard_arrow_down,
+                      color: AppColors.textSecondary,
+                      size: 22,
+                    ),
+                ],
+              ),
             ),
           ),
-          ...block.exercises.map((e) => _ExerciseCard(
-                exercise: e,
-                completedExercises: completedExercises,
-                timerSeconds: timerSeconds,
-                repCounts: repCounts,
-                onToggle: onToggle,
-              )),
+          if (expanded) ...[
+            const SizedBox(height: 10),
+            ...block.exercises.map((e) => _ExerciseCard(
+                  exercise: e,
+                  completedExercises: widget.completedExercises,
+                  timerSeconds: widget.timerSeconds,
+                  repCounts: widget.repCounts,
+                  onToggle: widget.onToggle,
+                )),
+          ],
         ],
       ),
     );
