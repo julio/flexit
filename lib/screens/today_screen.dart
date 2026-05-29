@@ -632,7 +632,7 @@ class _BlockCard extends StatelessWidget {
   }
 }
 
-class _ExerciseCard extends StatelessWidget {
+class _ExerciseCard extends StatefulWidget {
   final Exercise exercise;
   final Set<String> completedExercises;
   final Map<String, int> timerSeconds;
@@ -648,9 +648,45 @@ class _ExerciseCard extends StatelessWidget {
   });
 
   @override
+  State<_ExerciseCard> createState() => _ExerciseCardState();
+}
+
+class _ExerciseCardState extends State<_ExerciseCard> {
+  /// User has tapped the chevron / card to expand the body. Always overridden
+  /// to `false` when the exercise is fully done — collapsed is the resting
+  /// state when there's nothing to do.
+  bool _userExpanded = false;
+
+  bool get _isDone =>
+      widget.exercise.atomicIds.every(widget.completedExercises.contains);
+
+  bool get _isExpanded => _userExpanded && !_isDone;
+
+  @override
+  void didUpdateWidget(covariant _ExerciseCard old) {
+    super.didUpdateWidget(old);
+    // Auto-collapse when an exercise transitions to done.
+    if (_isDone && _userExpanded) {
+      // Defer to next frame so we don't mutate state mid-build.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _userExpanded = false);
+      });
+    }
+  }
+
+  void _toggleExpanded() {
+    if (_isDone) return;
+    setState(() => _userExpanded = !_userExpanded);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final exercise = widget.exercise;
+    final completedExercises = widget.completedExercises;
+    final onToggle = widget.onToggle;
     final atomicIds = exercise.atomicIds;
-    final isDone = atomicIds.every(completedExercises.contains);
+    final isDone = _isDone;
+    final expanded = _isExpanded;
     final isMultiSet = exercise.sets > 1;
     final sides = exercise.sidesPerSet;
     final hasSides = sides > 1;
@@ -659,12 +695,12 @@ class _ExerciseCard extends StatelessWidget {
     // TimerSpec, then a number parsed out of the duration label, then no
     // timer. Any value > 0 gets a tappable countdown button.
     final timerDuration = timer != null
-        ? (timerSeconds[timer.settingKey] ?? timer.defaultSeconds)
+        ? (widget.timerSeconds[timer.settingKey] ?? timer.defaultSeconds)
         : (exercise.parsedDurationSeconds ?? 0);
     final hasTimer = timerDuration > 0;
     final repsSpec = exercise.reps;
     final durationLabel = repsSpec != null
-        ? '${exercise.sets} × ${repCounts[repsSpec.settingKey] ?? repsSpec.defaultReps} reps'
+        ? '${exercise.sets} × ${widget.repCounts[repsSpec.settingKey] ?? repsSpec.defaultReps} reps'
         : exercise.duration;
     // Use the column-of-buttons layout whenever there are multiple sets OR a
     // timer is available — the timer button replaces the inline checkbox.
@@ -690,7 +726,12 @@ class _ExerciseCard extends StatelessWidget {
     }
 
     return GestureDetector(
-      onTap: useColumnLayout ? null : () => onToggle(exercise.id),
+      // Single-set no-timer cards keep tap-to-mark-done (their buttons live
+      // outside this widget); every other card toggles expanded on tap so the
+      // whole row is an obvious target.
+      onTap: useColumnLayout
+          ? (isDone ? null : _toggleExpanded)
+          : () => onToggle(exercise.id),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         margin: const EdgeInsets.only(bottom: 8),
@@ -777,16 +818,39 @@ class _ExerciseCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    exercise.name,
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w600,
-                      color: isDone ? AppColors.success : AppColors.text,
-                      decoration:
-                          isDone ? TextDecoration.lineThrough : null,
-                      decorationColor: AppColors.success,
-                    ),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          exercise.name,
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w600,
+                            color: isDone ? AppColors.success : AppColors.text,
+                            decoration: isDone
+                                ? TextDecoration.lineThrough
+                                : null,
+                            decorationColor: AppColors.success,
+                          ),
+                        ),
+                      ),
+                      if (!isDone)
+                        GestureDetector(
+                          onTap: _toggleExpanded,
+                          behavior: HitTestBehavior.opaque,
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(8, 0, 0, 4),
+                            child: Icon(
+                              expanded
+                                  ? Icons.keyboard_arrow_up
+                                  : Icons.keyboard_arrow_down,
+                              color: AppColors.textSecondary,
+                              size: 22,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -798,7 +862,7 @@ class _ExerciseCard extends StatelessWidget {
                           : AppColors.textSecondary,
                     ),
                   ),
-                  if (!isDone) ...[
+                  if (expanded) ...[
                     const SizedBox(height: 10),
                     Text(
                       exercise.description,
