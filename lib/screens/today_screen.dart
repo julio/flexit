@@ -284,14 +284,18 @@ class _TodayScreenState extends State<TodayScreen>
       final today = formatDate(now);
       // Push startedAt forward by the total paused time so the resulting
       // duration (completedAt − startedAt) reflects active time only.
+      // Persist in UTC so a session completed at 10 PM PDT still reads as
+      // 10 PM PDT (≈ 6 AM next-day WEST) after a timezone change.
       String? adjustedStart;
       if (_startTime != null) {
-        adjustedStart =
-            _startTime!.add(_totalPause(now)).toIso8601String();
+        adjustedStart = _startTime!
+            .add(_totalPause(now))
+            .toUtc()
+            .toIso8601String();
       }
       await saveSession(Session(
         date: today,
-        completedAt: now.toIso8601String(),
+        completedAt: now.toUtc().toIso8601String(),
         type: 'daily',
         startedAt: adjustedStart,
       ));

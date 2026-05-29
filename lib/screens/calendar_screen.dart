@@ -250,7 +250,10 @@ class CalendarScreenState extends State<CalendarScreen> {
     if (allDone && existing == null) {
       await saveSession(Session(
         date: date,
-        completedAt: DateTime.parse('${date}T12:00:00').toIso8601String(),
+        // Local-noon-on-date, stored as UTC so the display reads as 12:00 PM
+        // in whatever timezone the user reads it from.
+        completedAt:
+            DateTime.parse('${date}T12:00:00').toUtc().toIso8601String(),
         type: 'daily',
       ));
     } else if (!allDone && isRetroactive) {
@@ -803,7 +806,11 @@ class CalendarScreenState extends State<CalendarScreen> {
   }
 
   String _formatTime(String isoString) {
-    final d = DateTime.parse(isoString);
+    // `DateTime.parse` keeps UTC strings (with `Z`) in UTC and treats
+    // unsuffixed strings as local. `toLocal()` then renders both in the
+    // user's *current* timezone — so a session done at 10 PM PDT shows as
+    // 6 AM (the next day) when viewed in Lisbon.
+    final d = DateTime.parse(isoString).toLocal();
     final hour = d.hour % 12 == 0 ? 12 : d.hour % 12;
     final period = d.hour < 12 ? 'AM' : 'PM';
     return '$hour:${d.minute.toString().padLeft(2, '0')} $period';
