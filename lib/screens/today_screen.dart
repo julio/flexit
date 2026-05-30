@@ -27,11 +27,6 @@ class _TodayScreenState extends State<TodayScreen>
   Set<String> _completedExercises = {};
   Map<String, int> _timerSeconds = {};
   Map<String, int> _repCounts = {};
-  DateTime? _startTime;
-  Duration? _finalElapsed;
-  Timer? _ticker;
-  Duration _pauseTotal = Duration.zero;
-  DateTime? _pauseStartedAt;
   int? _pRating;
   int? _alcoholYesterday;
   int? _backPain;
@@ -60,7 +55,6 @@ class _TodayScreenState extends State<TodayScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _ticker?.cancel();
     super.dispose();
   }
 
@@ -82,9 +76,6 @@ class _TodayScreenState extends State<TodayScreen>
     final done = await isTodayComplete();
     final sessions = await getSessions();
     final completed = await getTodayCompletedExercises();
-    final startTime = await getStartTime(today);
-    final pauseTotal = await getPauseTotal(today);
-    final pauseStartedAt = await getPauseStartedAt(today);
     final pRating = await getPRating(today);
     final alcoholYesterday = await getAlcoholRating(yesterday);
     final backPain = await getBackPainRating(today);
@@ -119,13 +110,6 @@ class _TodayScreenState extends State<TodayScreen>
       }
     }
 
-    Duration? finalElapsed;
-    if (done) {
-      final session =
-          sessions.where((s) => s.date == today).firstOrNull;
-      finalElapsed = session?.duration;
-    }
-
     if (mounted) {
       setState(() {
         _done = done;
@@ -133,10 +117,6 @@ class _TodayScreenState extends State<TodayScreen>
         _completedExercises = completed;
         _timerSeconds = timers;
         _repCounts = reps;
-        _startTime = startTime;
-        _pauseTotal = pauseTotal;
-        _pauseStartedAt = pauseStartedAt;
-        _finalElapsed = finalElapsed;
         _pRating = pRating;
         _alcoholYesterday = alcoholYesterday;
         _backPain = backPain;
@@ -149,7 +129,6 @@ class _TodayScreenState extends State<TodayScreen>
         _loadedForDate = today;
         _loading = false;
       });
-      _updateTicker();
     }
   }
 
@@ -193,65 +172,6 @@ class _TodayScreenState extends State<TodayScreen>
   void _toggleWorkoutExpanded() {
     if (_done) return;
     setState(() => _workoutExpanded = !_workoutExpanded);
-  }
-
-  void _updateTicker() {
-    _ticker?.cancel();
-    // Only tick while a session is running and NOT paused — when paused the
-    // display is frozen at the pause moment.
-    if (_startTime != null && !_done && _pauseStartedAt == null) {
-      _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
-        if (mounted) setState(() {});
-      });
-    }
-  }
-
-  /// Total paused duration including any in-progress pause as of [at].
-  Duration _totalPause(DateTime at) {
-    if (_pauseStartedAt == null) return _pauseTotal;
-    return _pauseTotal + at.difference(_pauseStartedAt!);
-  }
-
-  Future<void> _togglePause() async {
-    if (_startTime == null || _done) return;
-    final today = formatDate(DateTime.now());
-    final now = DateTime.now();
-    if (_pauseStartedAt == null) {
-      // Pause now.
-      await setPauseStartedAt(today, now);
-      HapticFeedback.lightImpact();
-      if (!mounted) return;
-      setState(() => _pauseStartedAt = now);
-    } else {
-      // Resume: roll the current pause into the accumulated total.
-      final addition = now.difference(_pauseStartedAt!);
-      final newTotal = _pauseTotal + addition;
-      await setPauseTotal(today, newTotal);
-      await clearPauseStartedAt(today);
-      HapticFeedback.lightImpact();
-      if (!mounted) return;
-      setState(() {
-        _pauseTotal = newTotal;
-        _pauseStartedAt = null;
-      });
-    }
-    _updateTicker();
-  }
-
-  Future<void> _start() async {
-    final now = DateTime.now();
-    final today = formatDate(now);
-    await setStartTime(today, now);
-    // Starting a brand-new session resets any leftover pause state.
-    await clearPauseState(today);
-    if (!mounted) return;
-    setState(() {
-      _startTime = now;
-      _pauseTotal = Duration.zero;
-      _pauseStartedAt = null;
-    });
-    _updateTicker();
-    HapticFeedback.mediumImpact();
   }
 
   Future<void> _openSettings() async {
@@ -313,24 +233,12 @@ class _TodayScreenState extends State<TodayScreen>
     if (allDone && !_done) {
       final now = DateTime.now();
       final today = formatDate(now);
-      // Push startedAt forward by the total paused time so the resulting
-      // duration (completedAt − startedAt) reflects active time only.
-      // Persist in UTC so a session completed at 10 PM PDT still reads as
-      // 10 PM PDT (≈ 6 AM next-day WEST) after a timezone change.
-      String? adjustedStart;
-      if (_startTime != null) {
-        adjustedStart = _startTime!
-            .add(_totalPause(now))
-            .toUtc()
-            .toIso8601String();
-      }
+      // Stored in UTC so the timestamp reads correctly in any timezone.
       await saveSession(Session(
         date: today,
         completedAt: now.toUtc().toIso8601String(),
         type: 'daily',
-        startedAt: adjustedStart,
       ));
-      await clearPauseState(today);
       HapticFeedback.heavyImpact();
       await _loadState();
     } else if (!allDone && _done) {
@@ -470,7 +378,7 @@ class _TodayScreenState extends State<TodayScreen>
           // Whole exercise section folds into a single collapsible group —
           // header (and the done banner when finished) is the only thing
           // showing when collapsed; expanding reveals progress + week info +
-          // start/run controls + the block list.
+          // the block list.
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
@@ -479,7 +387,6 @@ class _TodayScreenState extends State<TodayScreen>
                 expanded: _workoutExpanded && !_done,
                 completedCount: completedCount,
                 totalExercises: totalExercises,
-                finalElapsed: _finalElapsed,
                 onTap: _toggleWorkoutExpanded,
               ),
             ),
@@ -507,19 +414,6 @@ class _TodayScreenState extends State<TodayScreen>
                   child: _WeekBanner(week: _weekProgram!),
                 ),
               ),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-                child: _startTime == null
-                    ? _StartButton(onPressed: _start)
-                    : _RunningClock(
-                        startTime: _startTime!,
-                        pauseTotal: _pauseTotal,
-                        pauseStartedAt: _pauseStartedAt,
-                        onPauseToggle: _togglePause,
-                      ),
-              ),
-            ),
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
               sliver: SliverList(
@@ -995,18 +889,11 @@ class _ExerciseCardState extends State<_ExerciseCard> {
   }
 }
 
-String _formatElapsed(Duration d) {
-  final m = d.inMinutes;
-  final s = d.inSeconds % 60;
-  return '$m:${s.toString().padLeft(2, '0')}';
-}
-
 class _WorkoutHeader extends StatelessWidget {
   final bool done;
   final bool expanded;
   final int completedCount;
   final int totalExercises;
-  final Duration? finalElapsed;
   final VoidCallback onTap;
 
   const _WorkoutHeader({
@@ -1014,7 +901,6 @@ class _WorkoutHeader extends StatelessWidget {
     required this.expanded,
     required this.completedCount,
     required this.totalExercises,
-    required this.finalElapsed,
     required this.onTap,
   });
 
@@ -1037,9 +923,7 @@ class _WorkoutHeader extends StatelessWidget {
                 color: AppColors.success, size: 20),
             const SizedBox(width: 8),
             Text(
-              finalElapsed != null
-                  ? 'Done in ${_formatElapsed(finalElapsed!)}'
-                  : 'All done for today',
+              'All done for today',
               style: TextStyle(
                 color: AppColors.success,
                 fontWeight: FontWeight.w800,
@@ -1101,145 +985,6 @@ class _WorkoutHeader extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _StartButton extends StatelessWidget {
-  final VoidCallback onPressed;
-  const _StartButton({required this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onPressed,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.accent,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: const Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.play_arrow, color: Colors.white, size: 22),
-            SizedBox(width: 6),
-            Text(
-              'Start',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w800,
-                fontSize: 16,
-                letterSpacing: 0.3,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _RunningClock extends StatelessWidget {
-  final DateTime startTime;
-  final Duration pauseTotal;
-  final DateTime? pauseStartedAt;
-  final VoidCallback onPauseToggle;
-
-  const _RunningClock({
-    required this.startTime,
-    required this.pauseTotal,
-    required this.pauseStartedAt,
-    required this.onPauseToggle,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final paused = pauseStartedAt != null;
-    // Frozen at the pause moment when paused; live wall-clock otherwise.
-    final reference = paused ? pauseStartedAt! : DateTime.now();
-    final elapsed = reference.difference(startTime) - pauseTotal;
-    final clamped = elapsed.isNegative ? Duration.zero : elapsed;
-
-    final fg = paused ? AppColors.warning : AppColors.accent;
-    final bg = paused
-        ? AppColors.warningDim
-        : AppColors.accentDim;
-
-    return Container(
-      padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: fg.withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            paused ? Icons.pause_circle_outline : Icons.timer_outlined,
-            color: fg,
-            size: 20,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Row(
-              children: [
-                Text(
-                  _formatElapsed(clamped),
-                  style: TextStyle(
-                    color: fg,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 18,
-                    fontFeatures: [FontFeature.tabularFigures()],
-                  ),
-                ),
-                if (paused) ...[
-                  const SizedBox(width: 8),
-                  Text(
-                    'paused',
-                    style: TextStyle(
-                      color: fg,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.3,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          GestureDetector(
-            onTap: onPauseToggle,
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: fg.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    paused ? Icons.play_arrow : Icons.pause,
-                    color: fg,
-                    size: 16,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    paused ? 'Resume' : 'Pause',
-                    style: TextStyle(
-                      color: fg,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
