@@ -211,11 +211,12 @@ const _hlrWakeUp = ExerciseBlock(
     ),
     Exercise(
       id: 'hlr-gentle-cobra',
-      name: 'Gentle Cobra',
-      duration: '5 reps × 5 sec hold',
+      name: 'Press-Up (McKenzie)',
+      duration: '5 reps',
       description:
-          'Face-down position, push up on forearms or hands to comfortable range.',
-      cue: 'Only as far as comfortable.',
+          'Face-down, hands under shoulders, press the chest up while the hips stay heavy on the floor. Hold each rep only as long as it feels good — no fixed count.',
+      cue:
+          'Watch where the pain goes. If symptoms move toward the spine (centralize) you can keep going; if they spread down the leg, stop and skip cobra today.',
     ),
   ],
 );
@@ -249,16 +250,26 @@ const _hlrDecompress = ExerciseBlock(
 const _hlrMobilize = ExerciseBlock(
   id: 'hlr-block2',
   title: 'B. Mobilize',
-  duration: '15 min',
+  duration: '20 min',
   exercises: [
+    Exercise(
+      id: 'hlr-iliacus-release',
+      name: 'Right Anterior Hip Release',
+      duration: '5 min',
+      description:
+          'Lie face-down with a lacrosse ball under the right anterior hip (just inside the bony ASIS, on the iliacus). Breathe; let the tissue soften before any stretching.',
+      cue:
+          'Tissue quality first, then length. This is what makes the half-kneeling stretch actually work.',
+    ),
     Exercise(
       id: 'hlr-hip-flexor-stretch-reach',
       name: 'Half-Kneeling Hip Flexor Stretch with Reach',
       duration: '60 sec each side',
       sets: 2,
       description:
-          'Back knee down, front foot forward; squeeze back glute and tuck pelvis, then reach same-side arm overhead.',
-      cue: 'Squeeze the back glute hard, then tuck the pelvis under.',
+          'Back knee down, front foot forward; squeeze the back glute, then tuck the pelvis under, then reach the same-side arm overhead.',
+      cue:
+          'Cue order matters: glute squeeze → posterior pelvic tilt → reach. No rib flare on the overhead reach — if your ribs lift, you traded the hip stretch for lumbar extension.',
     ),
     Exercise(
       id: 'hlr-90-90-switches',
@@ -267,6 +278,15 @@ const _hlrMobilize = ExerciseBlock(
       description:
           'Sit with one leg bent in front at 90°, other bent behind at 90°; switch sides by rotating both legs together.',
       cue: 'Directly works the limited hip rotation you have.',
+    ),
+    Exercise(
+      id: 'hlr-90-90-ir-liftoff',
+      name: '90/90 Hip IR Lift-Off',
+      duration: '10 reps each side',
+      description:
+          'In the 90/90 position, lift the back-leg shin a quarter-inch off the floor and hold 5 seconds. Keep the pelvis from rolling.',
+      cue:
+          'Isolated end-range internal rotation — the right side will be much harder, and that is exactly the point.',
     ),
     Exercise(
       id: 'hlr-figure-4',
@@ -278,10 +298,12 @@ const _hlrMobilize = ExerciseBlock(
     ),
     Exercise(
       id: 'hlr-cobra-upward-dog',
-      name: 'Cobra to Upward Dog Progression',
+      name: 'Prone Press-Up Series',
       duration: '5 reps',
-      description: 'Press up from floor progressively toward straight arms.',
-      cue: 'Do not force, but visit your end range daily.',
+      description:
+          'Weeks 1–2: prone press-ups only — hands under shoulders, hips stay heavy, gentle press, return. Watch where symptoms go. Week 3 onward, only if symptoms centralized: progressively build toward straight-arm upward dog over the remaining weeks.',
+      cue:
+          'Symptom centralization gates the progression. If pain moves toward the spine across reps you can keep going; if it spreads down the leg, stop.',
     ),
     Exercise(
       id: 'hlr-adductor-rocks',
@@ -297,7 +319,8 @@ const _hlrMobilize = ExerciseBlock(
       duration: '3 reps each side',
       description:
           'Low lunge, opposite hand on floor, twist toward front leg while reaching other arm to ceiling.',
-      cue: 'Hits hip flexor, hamstring, thoracic rotation in one shot.',
+      cue:
+          'Hits hip flexor, hamstring, thoracic rotation in one shot. Front-leg depth as tolerated.',
     ),
   ],
 );
@@ -333,10 +356,11 @@ const _hlrCoolDown = ExerciseBlock(
     Exercise(
       id: 'hlr-final-breathing',
       name: 'Final Breathing',
-      duration: '60 sec',
+      duration: '2 min',
       description:
           'Lie flat with hands on belly; breathe in 4 seconds, out 6 seconds.',
-      cue: 'Down-regulates the nervous system.',
+      cue:
+          'Down-regulates the nervous system — the whole program leans on this one for parasympathetic recovery.',
     ),
   ],
 );
@@ -410,13 +434,14 @@ const _hlrStrengthW2 = ExerciseBlock(
   duration: '15 min',
   exercises: [
     Exercise(
-      id: 'hlr-glute-bridge',
-      name: 'Glute Bridge',
-      duration: '15 reps',
+      id: 'hlr-single-leg-bridge',
+      name: 'Single-Leg Glute Bridge',
+      duration: '6 reps each side',
       sets: 3,
       description:
-          'Feet close to glutes; squeeze glutes then lift hips without arching lower back.',
-      cue: 'Squeeze glutes first, then lift hips. No back arch.',
+          'One foot planted close to the glute, other knee pulled to chest; squeeze, lift.',
+      cue:
+          'Drive through the planted heel. Hips stay level — no dropping on the up-knee side.',
     ),
     Exercise(
       id: 'hlr-clams',
@@ -444,6 +469,16 @@ const _hlrStrengthW2 = ExerciseBlock(
       description:
           'On all fours; extend opposite arm and leg slowly without rotating hips.',
       cue: "Hips don't rotate.",
+    ),
+    Exercise(
+      id: 'hlr-hip-hinge-bodyweight',
+      name: 'Bodyweight Hip Hinge',
+      duration: '10 reps',
+      sets: 3,
+      description:
+          'Feet hip-width, hands on the front of the thighs. Push hips straight back, slide the hands down the thighs until you feel hamstring tension, return. No weight — pattern only.',
+      cue:
+          'Grooves the hinge before you load it. Spine stays long; chest leads, not collapses.',
     ),
     Exercise(
       id: 'hlr-wall-sit',
@@ -516,21 +551,22 @@ const _hlrStrengthW3 = ExerciseBlock(
       cue: "Hips don't rotate.",
     ),
     Exercise(
+      id: 'hlr-rdl-light',
+      name: 'Romanian Deadlift (light KB)',
+      duration: '8 reps',
+      sets: 3,
+      description:
+          'Light kettlebell or single dumbbell in front. Hinge at the hip — push hips back, slide the weight down the thighs to mid-shin, return.',
+      cue:
+          'Hinge, not squat. Spine stays long; bar path tight to the legs.',
+    ),
+    Exercise(
       id: 'hlr-wall-sit',
       name: 'Wall Sit',
       duration: '40 sec',
       sets: 3,
       description: 'Back flat against wall with thighs parallel to floor.',
       cue: 'Builds quad endurance.',
-    ),
-    Exercise(
-      id: 'hlr-bear-hold',
-      name: 'Bear Hold',
-      duration: '20 sec',
-      sets: 3,
-      description:
-          'Quadruped position; lift knees about one inch off the floor and hold.',
-      cue: 'Brace the trunk. No sagging.',
     ),
     Exercise(
       id: 'hlr-reverse-lunge',
@@ -594,21 +630,21 @@ const _hlrStrengthW4 = ExerciseBlock(
       cue: "Hips don't rotate.",
     ),
     Exercise(
+      id: 'hlr-rdl-light',
+      name: 'Romanian Deadlift (light KB)',
+      duration: '10 reps',
+      sets: 3,
+      description:
+          'Light kettlebell or single dumbbell in front. Hinge at the hip — push hips back, slide the weight down the thighs to mid-shin, return.',
+      cue: 'Hinge, not squat. Spine stays long.',
+    ),
+    Exercise(
       id: 'hlr-wall-sit',
       name: 'Wall Sit',
       duration: '40 sec',
       sets: 3,
       description: 'Back flat against wall with thighs parallel to floor.',
       cue: 'Builds quad endurance.',
-    ),
-    Exercise(
-      id: 'hlr-bear-hold',
-      name: 'Bear Hold',
-      duration: '20 sec',
-      sets: 3,
-      description:
-          'Quadruped position; lift knees about one inch off the floor and hold.',
-      cue: 'Brace the trunk.',
     ),
     Exercise(
       id: 'hlr-reverse-lunge',
@@ -620,12 +656,24 @@ const _hlrStrengthW4 = ExerciseBlock(
       cue: 'Front knee tracks over the foot.',
     ),
     Exercise(
-      id: 'hlr-side-plank-full',
-      name: 'Side Plank (Full)',
+      id: 'hlr-side-plank-chair',
+      name: 'Side Plank (Chair-Assisted Full)',
       duration: '20 sec each side',
       sets: 3,
-      description: 'From feet, hips lifted, body straight from feet to head.',
-      cue: 'Glute medius does the work. Hips lift fully.',
+      description:
+          'Side plank from the feet, but the top foot rests on a chair seat instead of stacking on the bottom foot. Shorter moment arm, full-position alignment.',
+      cue:
+          'Intermediate step between modified (knees down) and full (feet stacked). Hips stay stacked; line stays straight.',
+    ),
+    Exercise(
+      id: 'hlr-chair-squat-test',
+      name: 'Chair Squat Test',
+      duration: '8 reps',
+      sets: 1,
+      description:
+          'Stand in front of a knee-height chair. Sit-to-stand for 8 reps. Watch for the lumbar rounding before contact with the chair or knees caving in.',
+      cue:
+          'This is a gate — if you can do 8 clean reps with a neutral spine, you can introduce the goblet squat in Week 5. If you cannot, stay with this until you can.',
     ),
   ],
 );

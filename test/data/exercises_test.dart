@@ -196,10 +196,13 @@ void main() {
       }
     });
 
-    test('total exercises is 22 (Week 1 view)', () {
+    test('total exercises in the Week-1 view', () {
+      // Block B (Mobilize) gained the anterior-hip release and the 90/90 IR
+      // lift-off after the critique panel; Week-1 strength stayed the same
+      // 6 exercises. 6 wake-up + 8 mobilize + 6 strength + 4 cool-down = 24.
       final total = hipLumbarResetBlocks.fold<int>(
           0, (sum, b) => sum + b.exercises.length);
-      expect(total, 22);
+      expect(total, 24);
     });
   });
 
@@ -313,7 +316,9 @@ void main() {
           isTrue);
       expect(w3Strength.exercises.any((e) => e.id == 'hlr-single-leg-bridge'),
           isTrue);
-      expect(w3Strength.exercises.any((e) => e.id == 'hlr-bear-hold'),
+      // Week 3 now introduces the RDL hinge precursor (added after the
+      // critique panel dropped Bear Hold from W3).
+      expect(w3Strength.exercises.any((e) => e.id == 'hlr-rdl-light'),
           isTrue);
     });
 
@@ -334,23 +339,35 @@ void main() {
       }
     });
 
-    test('all new strength exercises exist somewhere in the program', () {
+    test('all expected strength exercises exist somewhere in the program',
+        () {
       final allIds = hipLumbarResetProgram.weeks
           .expand((w) => w.strengthBlock.exercises)
           .map((e) => e.id)
           .toSet();
       for (final id in [
         'hlr-single-leg-bridge',
-        'hlr-bear-hold',
         'hlr-reverse-lunge',
         'hlr-side-plank-mod',
+        'hlr-side-plank-chair',
         'hlr-side-plank-full',
         'hlr-walking-lunge',
         'hlr-goblet-squat',
         'hlr-single-leg-deadlift',
+        'hlr-rdl-light',
+        'hlr-hip-hinge-bodyweight',
+        'hlr-chair-squat-test',
       ]) {
         expect(allIds, contains(id));
       }
+    });
+
+    test('bear hold removed after critique panel', () {
+      final allIds = hipLumbarResetProgram.weeks
+          .expand((w) => w.strengthBlock.exercises)
+          .map((e) => e.id)
+          .toSet();
+      expect(allIds.contains('hlr-bear-hold'), isFalse);
     });
   });
 
