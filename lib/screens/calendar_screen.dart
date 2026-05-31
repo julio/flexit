@@ -1413,6 +1413,7 @@ class _CompactWeightState extends State<_CompactWeight> {
                 fontWeight: FontWeight.w600,
               ),
             ),
+            onChanged: _commit,
             onSubmitted: _commit,
             onTapOutside: (_) {
               _focusNode.unfocus();

@@ -1855,6 +1855,9 @@ class _WeightCardState extends State<_WeightCard> {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
+                  // Commit on every keystroke so the prefs write is in
+                  // flight long before any tab-tap reload races with it.
+                  onChanged: _commit,
                   onSubmitted: _commit,
                   onTapOutside: (_) {
                     _focusNode.unfocus();
