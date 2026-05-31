@@ -1726,11 +1726,22 @@ class _WeightCard extends StatefulWidget {
 
 class _WeightCardState extends State<_WeightCard> {
   late final TextEditingController _controller;
+  late final FocusNode _focusNode;
 
   @override
   void initState() {
     super.initState();
     _controller = TextEditingController(text: _displayValue());
+    _focusNode = FocusNode();
+    // Commit whenever focus is lost — covers tapping the bottom-nav tab,
+    // backgrounding the app, scrolling far enough that the field unmounts,
+    // or any other "I'm done typing" path the TapRegion's onTapOutside
+    // doesn't see.
+    _focusNode.addListener(_onFocusChange);
+  }
+
+  void _onFocusChange() {
+    if (!_focusNode.hasFocus) _commit(_controller.text);
   }
 
   @override
@@ -1738,13 +1749,18 @@ class _WeightCardState extends State<_WeightCard> {
     super.didUpdateWidget(old);
     // Reflect external changes (e.g. unit toggle, or value set elsewhere).
     final next = _displayValue();
-    if (_controller.text != next) {
+    if (_controller.text != next && !_focusNode.hasFocus) {
       _controller.text = next;
     }
   }
 
   @override
   void dispose() {
+    // Best-effort: if the user navigated away with the field still focused,
+    // make sure their last typed value lands in storage.
+    _commit(_controller.text);
+    _focusNode.removeListener(_onFocusChange);
+    _focusNode.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -1813,6 +1829,7 @@ class _WeightCardState extends State<_WeightCard> {
               Expanded(
                 child: TextField(
                   controller: _controller,
+                  focusNode: _focusNode,
                   keyboardType: const TextInputType.numberWithOptions(
                       decimal: true),
                   textInputAction: TextInputAction.done,
@@ -1836,8 +1853,7 @@ class _WeightCardState extends State<_WeightCard> {
                   ),
                   onSubmitted: _commit,
                   onTapOutside: (_) {
-                    FocusManager.instance.primaryFocus?.unfocus();
-                    _commit(_controller.text);
+                    _focusNode.unfocus();
                   },
                 ),
               ),

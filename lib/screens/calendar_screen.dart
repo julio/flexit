@@ -1296,22 +1296,34 @@ class _CompactWeight extends StatefulWidget {
 
 class _CompactWeightState extends State<_CompactWeight> {
   late final TextEditingController _controller;
+  late final FocusNode _focusNode;
 
   @override
   void initState() {
     super.initState();
     _controller = TextEditingController(text: _display());
+    _focusNode = FocusNode();
+    _focusNode.addListener(_onFocusChange);
+  }
+
+  void _onFocusChange() {
+    if (!_focusNode.hasFocus) _commit(_controller.text);
   }
 
   @override
   void didUpdateWidget(covariant _CompactWeight old) {
     super.didUpdateWidget(old);
     final next = _display();
-    if (_controller.text != next) _controller.text = next;
+    if (_controller.text != next && !_focusNode.hasFocus) {
+      _controller.text = next;
+    }
   }
 
   @override
   void dispose() {
+    _commit(_controller.text);
+    _focusNode.removeListener(_onFocusChange);
+    _focusNode.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -1379,6 +1391,7 @@ class _CompactWeightState extends State<_CompactWeight> {
           ),
           child: TextField(
             controller: _controller,
+            focusNode: _focusNode,
             keyboardType:
                 const TextInputType.numberWithOptions(decimal: true),
             textInputAction: TextInputAction.done,
@@ -1402,8 +1415,7 @@ class _CompactWeightState extends State<_CompactWeight> {
             ),
             onSubmitted: _commit,
             onTapOutside: (_) {
-              FocusManager.instance.primaryFocus?.unfocus();
-              _commit(_controller.text);
+              _focusNode.unfocus();
             },
           ),
         ),
