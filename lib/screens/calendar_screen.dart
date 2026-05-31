@@ -418,30 +418,20 @@ class CalendarScreenState extends State<CalendarScreen> {
             child: Builder(builder: (_) {
               final y = formatDate(
                   DateTime.now().subtract(const Duration(days: 1)));
-              final Map<String, int> map;
-              switch (_measurement) {
-                case 'p':
-                  map = _pRatings;
-                  break;
-                case 'drinks':
-                  map = _alcoholRatings;
-                  break;
-                case 'backpain':
-                  map = _backPainRatings;
-                  break;
-                case 'weight':
-                  map = _weightGrams;
-                  break;
-                default:
-                  map = const {};
-              }
               return Text(
-                'v=${dataChangedCounter.value} · '
-                '$_measurement: ${map.length} entries · '
-                'yest($y)=${map[y]} · today=${map[today]}',
+                'v=${dataChangedCounter.value} · sess=${_sessions.length} · '
+                'ex=${_exercisesByDate.length}\n'
+                'sizes: p=${_pRatings.length} '
+                'drinks=${_alcoholRatings.length} '
+                'bp=${_backPainRatings.length} '
+                'w=${_weightGrams.length}\n'
+                'yest($y): p=${_pRatings[y]} '
+                'drinks=${_alcoholRatings[y]} '
+                'bp=${_backPainRatings[y]} '
+                'w=${_weightGrams[y]}',
                 style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 11,
+                    fontSize: 10,
                     fontFamily: 'Menlo'),
               );
             }),
