@@ -167,7 +167,28 @@ class _TodayScreenState extends State<TodayScreen>
       await setWeightGrams(today, grams);
     }
     HapticFeedback.lightImpact();
-    if (mounted) setState(() => _weightGrams = grams);
+    if (!mounted) return;
+    setState(() => _weightGrams = grams);
+    // Visible confirmation so when this flow misbehaves we can see exactly
+    // where: no snackbar = save never ran; snackbar without calendar fill =
+    // calendar reload issue.
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    if (messenger == null) return;
+    messenger.hideCurrentSnackBar();
+    if (grams == null) {
+      messenger.showSnackBar(const SnackBar(
+        content: Text('Weight cleared'),
+        duration: Duration(milliseconds: 800),
+      ));
+    } else {
+      final shown = _weightUnit == 'kg'
+          ? '${(grams / 1000).toStringAsFixed(1)} kg'
+          : '${(grams / 453.59237).toStringAsFixed(1)} lb';
+      messenger.showSnackBar(SnackBar(
+        content: Text('Saved $shown'),
+        duration: const Duration(milliseconds: 800),
+      ));
+    }
   }
 
   Future<void> _setWeightUnit(String unit) async {
