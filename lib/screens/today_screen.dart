@@ -164,11 +164,16 @@ class _TodayScreenState extends State<TodayScreen>
   Future<void> _setAlcoholYesterday(int value) async {
     if (_yesterdayKey.isEmpty) return;
     await setAlcoholRating(_yesterdayKey, value);
+    // Verify the write actually landed in prefs. If readback != value,
+    // the storage layer is lying about the write succeeding.
+    final readback = await getAlcoholRating(_yesterdayKey);
+    final allKeys = await debugCountFlexitKeys();
     bumpDataChanged();
     HapticFeedback.lightImpact();
     if (mounted) {
       setState(() => _alcoholYesterday = value);
-      _flash('Saved drinks=$value for $_yesterdayKey');
+      _flash(
+          'wrote=$value readback=$readback keys=$allKeys for $_yesterdayKey');
     }
   }
 
