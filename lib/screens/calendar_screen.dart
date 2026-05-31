@@ -2,6 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../data/exercises.dart';
 import '../data/storage.dart';
+import '../main.dart'
+    show
+        alcoholRatingsByDate,
+        backPainRatingsByDate,
+        pRatingsByDate,
+        weightUnit,
+        weightsByDate;
 import '../models/exercise.dart';
 import '../models/session.dart';
 import '../theme.dart';
@@ -34,6 +41,41 @@ class CalendarScreenState extends State<CalendarScreen> {
   void initState() {
     super.initState();
     _loadSessions();
+    // Subscribe to every rating notifier. Today writes into these on save,
+    // so Calendar rebuilds instantly — no tab-tap reload race.
+    pRatingsByDate.addListener(_onSharedRatingsChanged);
+    alcoholRatingsByDate.addListener(_onSharedRatingsChanged);
+    backPainRatingsByDate.addListener(_onSharedRatingsChanged);
+    weightsByDate.addListener(_onSharedRatingsChanged);
+    weightUnit.addListener(_onSharedRatingsChanged);
+    // Seed local state from notifiers (they may have been hydrated in main()
+    // before this screen mounted).
+    _pRatings = pRatingsByDate.value;
+    _alcoholRatings = alcoholRatingsByDate.value;
+    _backPainRatings = backPainRatingsByDate.value;
+    _weightGrams = weightsByDate.value;
+    _weightUnit = weightUnit.value;
+  }
+
+  @override
+  void dispose() {
+    pRatingsByDate.removeListener(_onSharedRatingsChanged);
+    alcoholRatingsByDate.removeListener(_onSharedRatingsChanged);
+    backPainRatingsByDate.removeListener(_onSharedRatingsChanged);
+    weightsByDate.removeListener(_onSharedRatingsChanged);
+    weightUnit.removeListener(_onSharedRatingsChanged);
+    super.dispose();
+  }
+
+  void _onSharedRatingsChanged() {
+    if (!mounted) return;
+    setState(() {
+      _pRatings = pRatingsByDate.value;
+      _alcoholRatings = alcoholRatingsByDate.value;
+      _backPainRatings = backPainRatingsByDate.value;
+      _weightGrams = weightsByDate.value;
+      _weightUnit = weightUnit.value;
+    });
   }
 
   Future<void> _loadSessions() async {
@@ -43,7 +85,7 @@ class CalendarScreenState extends State<CalendarScreen> {
     final alcoholRatings = await getAllAlcoholRatings();
     final backPainRatings = await getAllBackPainRatings();
     final weightGrams = await getAllWeightGrams();
-    final weightUnit = await getWeightUnit();
+    final loadedUnit = await getWeightUnit();
     final measurement = await getCalendarMeasurement();
     final routineId = await getActiveRoutineId();
     final routine = routineById(routineId);
@@ -57,27 +99,19 @@ class CalendarScreenState extends State<CalendarScreen> {
         _alcoholRatings = alcoholRatings;
         _backPainRatings = backPainRatings;
         _weightGrams = weightGrams;
-        _weightUnit = weightUnit;
+        _weightUnit = loadedUnit;
         _measurement = measurement;
         _routine = routine;
         _programStart = programStart;
       });
-      // Diagnostic — tells us at the moment of reload exactly what the
-      // calendar pulled out of prefs for today's weight.
-      final todayStr = formatDate(DateTime.now());
-      final g = weightGrams[todayStr];
-      final shown = g == null
-          ? '—'
-          : (weightUnit == 'kg'
-              ? '${(g / 1000).toStringAsFixed(1)} kg'
-              : '${(g / 453.59237).toStringAsFixed(1)} lb');
-      final messenger = ScaffoldMessenger.maybeOf(context);
-      messenger?.hideCurrentSnackBar();
-      messenger?.showSnackBar(SnackBar(
-        content: Text(
-            'Reload · ${weightGrams.length} weights · today: $shown'),
-        duration: const Duration(milliseconds: 1500),
-      ));
+      // Keep every shared notifier consistent with what reload found on disk
+      // — covers the case where data was changed outside the Today screen
+      // (e.g. on restore from backup, or another device sync later).
+      pRatingsByDate.value = pRatings;
+      alcoholRatingsByDate.value = alcoholRatings;
+      backPainRatingsByDate.value = backPainRatings;
+      weightsByDate.value = weightGrams;
+      weightUnit.value = loadedUnit;
     }
   }
 
@@ -118,27 +152,25 @@ class CalendarScreenState extends State<CalendarScreen> {
     final date = _selectedDate;
     if (date == null) return;
     await setPRating(date, value);
-    if (mounted) {
-      setState(() => _pRatings = {..._pRatings, date: value});
-    }
+    // Notifier listener pulls the new value back into local state.
+    pRatingsByDate.value = {...pRatingsByDate.value, date: value};
   }
 
   Future<void> _setSelectedAlcohol(int value) async {
     final date = _selectedDate;
     if (date == null) return;
     await setAlcoholRating(date, value);
-    if (mounted) {
-      setState(() => _alcoholRatings = {..._alcoholRatings, date: value});
-    }
+    alcoholRatingsByDate.value = {...alcoholRatingsByDate.value, date: value};
   }
 
   Future<void> _setSelectedBackPain(int value) async {
     final date = _selectedDate;
     if (date == null) return;
     await setBackPainRating(date, value);
-    if (mounted) {
-      setState(() => _backPainRatings = {..._backPainRatings, date: value});
-    }
+    backPainRatingsByDate.value = {
+      ...backPainRatingsByDate.value,
+      date: value,
+    };
   }
 
   Future<void> _setSelectedWeight(int? grams) async {
@@ -146,15 +178,13 @@ class CalendarScreenState extends State<CalendarScreen> {
     if (date == null) return;
     if (grams == null) {
       await clearWeight(date);
-      if (mounted) {
-        setState(() => _weightGrams = {..._weightGrams}..remove(date));
-      }
+      weightsByDate.value = {...weightsByDate.value}..remove(date);
     } else {
       await setWeightGrams(date, grams);
-      if (mounted) {
-        setState(() => _weightGrams = {..._weightGrams, date: grams});
-      }
+      weightsByDate.value = {...weightsByDate.value, date: grams};
     }
+    // Listener on the notifier syncs local _weightGrams via setState — no
+    // duplicate setState needed here.
   }
 
   /// Long-press shortcut on a day cell: pop a sheet with just the value
@@ -177,8 +207,11 @@ class CalendarScreenState extends State<CalendarScreen> {
                   value: _pRatings[dateStr],
                   onSelect: (v) async {
                     await setPRating(dateStr, v);
+                    pRatingsByDate.value = {
+                      ...pRatingsByDate.value,
+                      dateStr: v,
+                    };
                     setSheetState(() {});
-                    setState(() => _pRatings = {..._pRatings, dateStr: v});
                   },
                 );
                 break;
@@ -187,9 +220,11 @@ class CalendarScreenState extends State<CalendarScreen> {
                   value: _alcoholRatings[dateStr],
                   onSelect: (v) async {
                     await setAlcoholRating(dateStr, v);
+                    alcoholRatingsByDate.value = {
+                      ...alcoholRatingsByDate.value,
+                      dateStr: v,
+                    };
                     setSheetState(() {});
-                    setState(() =>
-                        _alcoholRatings = {..._alcoholRatings, dateStr: v});
                   },
                 );
                 break;
@@ -198,9 +233,11 @@ class CalendarScreenState extends State<CalendarScreen> {
                   value: _backPainRatings[dateStr],
                   onSelect: (v) async {
                     await setBackPainRating(dateStr, v);
+                    backPainRatingsByDate.value = {
+                      ...backPainRatingsByDate.value,
+                      dateStr: v,
+                    };
                     setSheetState(() {});
-                    setState(() =>
-                        _backPainRatings = {..._backPainRatings, dateStr: v});
                   },
                 );
                 break;
@@ -211,19 +248,16 @@ class CalendarScreenState extends State<CalendarScreen> {
                   onChange: (g) async {
                     if (g == null) {
                       await clearWeight(dateStr);
+                      weightsByDate.value = {...weightsByDate.value}
+                        ..remove(dateStr);
                     } else {
                       await setWeightGrams(dateStr, g);
+                      weightsByDate.value = {
+                        ...weightsByDate.value,
+                        dateStr: g,
+                      };
                     }
                     setSheetState(() {});
-                    setState(() {
-                      final next = {..._weightGrams};
-                      if (g == null) {
-                        next.remove(dateStr);
-                      } else {
-                        next[dateStr] = g;
-                      }
-                      _weightGrams = next;
-                    });
                   },
                 );
                 break;
@@ -385,31 +419,6 @@ class CalendarScreenState extends State<CalendarScreen> {
             onPrev: () => _cycleMeasurement(-1),
             onNext: () => _cycleMeasurement(1),
           ),
-          if (_measurement == 'weight') ...[
-            const SizedBox(height: 8),
-            // Inline diagnostic: shows exactly what the calendar has in its
-            // weight map, including today's lookup. If you save 75.5 on Today
-            // and this still reads "today: —", the calendar isn't picking up
-            // the save (reload race / state issue). If this reads the right
-            // value but the cell still doesn't fill, it's a render bug.
-            Builder(builder: (_) {
-              final todayStr = formatDate(DateTime.now());
-              final g = _weightGrams[todayStr];
-              final shown = g == null
-                  ? '—'
-                  : (_weightUnit == 'kg'
-                      ? '${(g / 1000).toStringAsFixed(1)} kg'
-                      : '${(g / 453.59237).toStringAsFixed(1)} lb');
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: Text(
-                  'debug · ${_weightGrams.length} entries · today: $shown',
-                  style: TextStyle(
-                      color: AppColors.textMuted, fontSize: 11),
-                ),
-              );
-            }),
-          ],
           if (_measurement == 'weight' && _weightGrams.isNotEmpty) ...[
             const SizedBox(height: 8),
             GestureDetector(
