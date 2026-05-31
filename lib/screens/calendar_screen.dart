@@ -732,8 +732,12 @@ class CalendarScreenState extends State<CalendarScreen> {
     final editable = !isToday && !isFuture;
     final allExercises =
         _blocksForDate(date).expand((b) => b.exercises).toList();
-    final totalAtomic =
-        allExercises.fold<int>(0, (sum, e) => sum + e.sets);
+    // Use atomicIds.length, not e.sets — per-side exercises produce more
+    // atomic IDs than they have "sets" (e.g. sets=2 sides=2 → 4 atomic IDs),
+    // so summing e.sets undercounts the denominator and would let the day
+    // read "40/35 done" when fully completed.
+    final totalAtomic = allExercises.fold<int>(
+        0, (sum, e) => sum + e.atomicIds.length);
     final completedCount = allExercises.fold<int>(
         0,
         (sum, e) =>
@@ -828,12 +832,17 @@ class CalendarScreenState extends State<CalendarScreen> {
           if (editable || hasExerciseData || isFuture) ...[
             const SizedBox(height: 12),
             ...allExercises.map((e) {
-              final doneSets =
+              final atomicCount = e.atomicIds.length;
+              final doneUnits =
                   e.atomicIds.where(_selectedDateExercises.contains).length;
-              final done = doneSets == e.sets;
-              final partial = doneSets > 0 && !done;
-              final trailing = e.sets > 1
-                  ? '$doneSets/${e.sets} sets'
+              final done = doneUnits == atomicCount;
+              final partial = doneUnits > 0 && !done;
+              // Per-side exercises have more atomic IDs than sets (e.g. sets=2
+              // sides=2 → 4 units), so we compare against atomicIds.length
+              // rather than e.sets — otherwise a fully completed multi-side
+              // exercise would forever read as "partial".
+              final trailing = atomicCount > 1
+                  ? '$doneUnits/$atomicCount'
                   : e.duration;
               final row = Padding(
                 padding: const EdgeInsets.symmetric(vertical: 6),
