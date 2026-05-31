@@ -345,6 +345,11 @@ Future<Map<String, int>> getAllWeightGrams() async {
   final result = <String, int>{};
   for (final key in prefs.getKeys()) {
     if (!key.startsWith(_weightPrefix)) continue;
+    // _weightUnitKey ('flexit_weight_unit') also starts with _weightPrefix
+    // but holds a String, not an int. Skip it explicitly — otherwise
+    // prefs.getInt throws TypeError mid-iteration and kills _loadSessions
+    // entirely.
+    if (key == _weightUnitKey) continue;
     final value = prefs.getInt(key);
     if (value == null) continue;
     result[key.substring(_weightPrefix.length)] = value;

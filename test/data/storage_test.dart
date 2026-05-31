@@ -517,6 +517,20 @@ void main() {
       });
     });
 
+    test(
+        'getAllWeightGrams does not blow up when a unit value is stored '
+        '(unit key shares the weight prefix)', () async {
+      // Regression: the unit key 'flexit_weight_unit' starts with the
+      // weight prefix 'flexit_weight_'. Iterating keys without excluding
+      // the unit caused prefs.getInt to throw TypeError on the String 'kg',
+      // which silently killed the entire Calendar load chain.
+      await setWeightUnit('kg');
+      await setWeightGrams('2026-05-28', 75200);
+      // Must not throw, and must not include the unit key.
+      final all = await getAllWeightGrams();
+      expect(all, {'2026-05-28': 75200});
+    });
+
     test('unit defaults to kg', () async {
       expect(await getWeightUnit(), 'kg');
     });
