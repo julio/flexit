@@ -119,6 +119,30 @@ Future<void> clearStartTime(String date) async {
   await prefs.remove('$_startPrefix$date');
 }
 
+/// Per-exercise countdown timer end time (UTC ISO). Stored so an in-flight
+/// timer survives the user collapsing the workout section, switching tabs,
+/// backgrounding the app, or force-quitting — when the widget rebuilds it
+/// reads the end time back and resumes or auto-completes.
+String _timerEndKey(String atomicId) => 'flexit_timer_end_$atomicId';
+
+Future<DateTime?> getTimerEnd(String atomicId) async {
+  final prefs = await SharedPreferences.getInstance();
+  final raw = prefs.getString(_timerEndKey(atomicId));
+  if (raw == null) return null;
+  return DateTime.tryParse(raw);
+}
+
+Future<void> setTimerEnd(String atomicId, DateTime end) async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setString(
+      _timerEndKey(atomicId), end.toUtc().toIso8601String());
+}
+
+Future<void> clearTimerEnd(String atomicId) async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.remove(_timerEndKey(atomicId));
+}
+
 /// Total accumulated paused time for a session (in seconds), excluding any
 /// pause currently in progress. Returns Duration.zero when nothing's stored.
 Future<Duration> getPauseTotal(String date) async {

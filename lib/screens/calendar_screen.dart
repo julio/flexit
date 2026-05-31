@@ -600,22 +600,27 @@ class CalendarScreenState extends State<CalendarScreen> {
       final isToday = dateStr == today;
       final isSelected = dateStr == _selectedDate;
       final isFuture = date.isAfter(DateTime.now());
-      final isMissed = !isCompleted &&
-          !isFuture &&
-          !isToday &&
+      final isTrackedDay = !isFuture &&
           firstSessionDate != null &&
           dateStr.compareTo(firstSessionDate) >= 0;
 
-      var isPartial = false;
-      if ((isMissed || isToday) && !isCompleted) {
-        final validAtomicIds = _blocksForDate(dateStr)
-            .expand((b) => b.exercises)
-            .expand((e) => e.atomicIds)
-            .toSet();
-        final saved = _exercisesByDate[dateStr] ?? <String>{};
-        final done = saved.intersection(validAtomicIds).length;
-        final total = validAtomicIds.length;
-        isPartial = total > 0 && done * 2 >= total;
+      // Completion ratio for the gradient: 1.0 means a full session for the
+      // day, 0.0 means nothing logged. Days before the user's first session
+      // and future days don't get a ratio (no fill).
+      double? completionRatio;
+      if (isTrackedDay) {
+        if (isCompleted) {
+          completionRatio = 1.0;
+        } else {
+          final validAtomicIds = _blocksForDate(dateStr)
+              .expand((b) => b.exercises)
+              .expand((e) => e.atomicIds)
+              .toSet();
+          final saved = _exercisesByDate[dateStr] ?? <String>{};
+          final done = saved.intersection(validAtomicIds).length;
+          final total = validAtomicIds.length;
+          completionRatio = total > 0 ? done / total : 0.0;
+        }
       }
 
       // Pick a fill color for the cell based on the active measurement.
@@ -627,14 +632,11 @@ class CalendarScreenState extends State<CalendarScreen> {
       String? weightLabel;
       switch (_measurement) {
         case 'completion':
-          if (isCompleted) {
-            cellFill = AppColors.success;
-          } else if (isPartial) {
-            cellFill = AppColors.warning;
-          } else if (isMissed) {
-            cellFill = AppColors.missed;
-          } else if (isToday) {
-            cellFill = AppColors.accent;
+          // Continuous gradient: red (0% done) → green (100%). Applied
+          // retroactively to past days based on the saved exercise set.
+          if (completionRatio != null) {
+            cellFill = Color.lerp(
+                AppColors.missed, AppColors.success, completionRatio)!;
           }
           break;
         case 'p':

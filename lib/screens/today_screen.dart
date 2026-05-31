@@ -730,6 +730,7 @@ class _ExerciseCardState extends State<_ExerciseCard> {
                                     return _TimerSetButton(
                                       key: ValueKey(
                                           '$atomicId@$timerDuration'),
+                                      atomicId: atomicId,
                                       label: label,
                                       durationSeconds: timerDuration,
                                       notificationId: atomicId.hashCode,
@@ -991,6 +992,7 @@ class _WorkoutHeader extends StatelessWidget {
 }
 
 class _TimerSetButton extends StatefulWidget {
+  final String atomicId;
   final String label;
   final int durationSeconds;
   final int notificationId;
@@ -1001,6 +1003,7 @@ class _TimerSetButton extends StatefulWidget {
 
   const _TimerSetButton({
     super.key,
+    required this.atomicId,
     required this.label,
     required this.durationSeconds,
     required this.notificationId,
@@ -1030,6 +1033,7 @@ class _TimerSetButtonState extends State<_TimerSetButton>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _tryRestore();
   }
 
   @override
@@ -1044,11 +1048,40 @@ class _TimerSetButtonState extends State<_TimerSetButton>
     if (state == AppLifecycleState.resumed) _checkAndUpdate();
   }
 
+  /// On mount, look up any in-flight end time persisted from a prior run.
+  /// If it's in the future, resume ticking. If it's already past, fire
+  /// completion (the notification has likely already shown).
+  Future<void> _tryRestore() async {
+    final end = await getTimerEnd(widget.atomicId);
+    if (end == null) return;
+    if (!mounted) return;
+    if (!DateTime.now().isBefore(end)) {
+      // Already elapsed while we were unmounted.
+      await clearTimerEnd(widget.atomicId);
+      TimerNotifications.instance.cancel(widget.notificationId);
+      if (!mounted) return;
+      if (!widget.isDone) {
+        _fireCompletionCue();
+        widget.onComplete();
+      }
+      return;
+    }
+    setState(() {
+      _running = true;
+      _endTime = end.toLocal();
+    });
+    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      _checkAndUpdate();
+    });
+  }
+
   void _checkAndUpdate() {
     if (!_running || _endTime == null) return;
     if (!DateTime.now().isBefore(_endTime!)) {
       _ticker?.cancel();
       TimerNotifications.instance.cancel(widget.notificationId);
+      clearTimerEnd(widget.atomicId);
       setState(() {
         _running = false;
         _endTime = null;
@@ -1077,8 +1110,10 @@ class _TimerSetButtonState extends State<_TimerSetButton>
     });
   }
 
-  void _start() {
+  void _start() async {
     final end = DateTime.now().add(Duration(seconds: widget.durationSeconds));
+    await setTimerEnd(widget.atomicId, end);
+    if (!mounted) return;
     setState(() {
       _running = true;
       _endTime = end;
@@ -1099,6 +1134,7 @@ class _TimerSetButtonState extends State<_TimerSetButton>
   void _cancel() {
     _ticker?.cancel();
     TimerNotifications.instance.cancel(widget.notificationId);
+    clearTimerEnd(widget.atomicId);
     setState(() {
       _running = false;
       _endTime = null;
