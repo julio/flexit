@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../data/exercises.dart';
 import '../data/storage.dart';
 import '../main.dart' show themeIsDark;
@@ -99,6 +100,48 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await _load();
   }
 
+  Future<void> _exportToClipboard() async {
+    final json = await exportAllJson();
+    await Clipboard.setData(ClipboardData(text: json));
+    if (!mounted) return;
+    final bytes = json.length;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Copied $bytes characters of backup to clipboard. '
+            'Paste into Notes / iCloud / email immediately.'),
+        duration: const Duration(seconds: 6),
+      ),
+    );
+  }
+
+  Future<void> _importFromClipboard() async {
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    final text = data?.text;
+    if (text == null || text.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Clipboard is empty.')),
+      );
+      return;
+    }
+    try {
+      final count = await importAllJson(text);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Restored $count keys. Switch tabs to refresh.'),
+          duration: const Duration(seconds: 5),
+        ),
+      );
+      await _load();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Import failed: $e')),
+      );
+    }
+  }
+
   Future<void> _updateTimer(String key, int seconds) async {
     setState(() => _timerValues[key] = seconds);
     await setTimerSeconds(key, seconds);
@@ -145,6 +188,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     value: dark,
                     onChanged: _toggleDarkMode,
                   ),
+                ),
+                const SizedBox(height: 16),
+                const _SectionHeader('DATA'),
+                const SizedBox(height: 12),
+                _ActionTile(
+                  label: 'Back up to clipboard',
+                  description:
+                      'Copies every session, exercise, weight, p/drinks/back-pain rating to the clipboard as JSON. Paste it into Notes or email *immediately* — the clipboard is not a backup.',
+                  icon: Icons.ios_share,
+                  onTap: _exportToClipboard,
+                ),
+                _ActionTile(
+                  label: 'Restore from clipboard',
+                  description:
+                      'Reads a JSON backup from the clipboard and writes every flexit_* key back into storage. Existing keys are overwritten where they overlap; nothing is deleted.',
+                  icon: Icons.download_outlined,
+                  onTap: _importFromClipboard,
                 ),
                 const SizedBox(height: 16),
                 if (_timed.isNotEmpty) ...[
@@ -537,6 +597,65 @@ class _ProgramStartTile extends StatelessWidget {
               ),
             ),
             Icon(Icons.chevron_right, color: AppColors.textMuted, size: 18),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ActionTile extends StatelessWidget {
+  final String label;
+  final String description;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _ActionTile({
+    required this.label,
+    required this.description,
+    required this.icon,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.cardBorder),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: AppColors.accent, size: 20),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.text,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    description,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),

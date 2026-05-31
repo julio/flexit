@@ -143,6 +143,74 @@ Future<void> clearTimerEnd(String atomicId) async {
   await prefs.remove(_timerEndKey(atomicId));
 }
 
+/// Snapshot every `flexit_*` key into a JSON string. Round-trips through
+/// [importAllJson]. Use to back up before risky deploys or to migrate data
+/// between devices.
+Future<String> exportAllJson() async {
+  final prefs = await SharedPreferences.getInstance();
+  final out = <String, dynamic>{
+    'version': 1,
+    'exportedAt': DateTime.now().toUtc().toIso8601String(),
+    'entries': <String, dynamic>{},
+  };
+  final entries = out['entries'] as Map<String, dynamic>;
+  for (final key in prefs.getKeys()) {
+    if (!key.startsWith('flexit_')) continue;
+    final v = prefs.get(key);
+    if (v is String) {
+      entries[key] = {'type': 'string', 'value': v};
+    } else if (v is int) {
+      entries[key] = {'type': 'int', 'value': v};
+    } else if (v is bool) {
+      entries[key] = {'type': 'bool', 'value': v};
+    } else if (v is double) {
+      entries[key] = {'type': 'double', 'value': v};
+    } else if (v is List<String>) {
+      entries[key] = {'type': 'stringList', 'value': v};
+    }
+  }
+  return const JsonEncoder.withIndent('  ').convert(out);
+}
+
+/// Restore from a JSON snapshot produced by [exportAllJson]. Returns the
+/// number of keys written. Does NOT clear existing keys — anything already
+/// in prefs that's not in the import stays.
+Future<int> importAllJson(String json) async {
+  final prefs = await SharedPreferences.getInstance();
+  final decoded = jsonDecode(json) as Map<String, dynamic>;
+  final entries = decoded['entries'] as Map<String, dynamic>;
+  var written = 0;
+  for (final entry in entries.entries) {
+    final key = entry.key;
+    if (!key.startsWith('flexit_')) continue;
+    final spec = entry.value as Map<String, dynamic>;
+    final type = spec['type'] as String;
+    final value = spec['value'];
+    switch (type) {
+      case 'string':
+        await prefs.setString(key, value as String);
+        break;
+      case 'int':
+        await prefs.setInt(key, value as int);
+        break;
+      case 'bool':
+        await prefs.setBool(key, value as bool);
+        break;
+      case 'double':
+        await prefs.setDouble(key, value as double);
+        break;
+      case 'stringList':
+        await prefs.setStringList(
+            key, (value as List).map((e) => e as String).toList());
+        break;
+      default:
+        continue;
+    }
+    written++;
+  }
+  return written;
+}
+
 /// Total accumulated paused time for a session (in seconds), excluding any
 /// pause currently in progress. Returns Duration.zero when nothing's stored.
 Future<Duration> getPauseTotal(String date) async {

@@ -558,6 +558,59 @@ void main() {
     });
   });
 
+  group('exportAllJson / importAllJson', () {
+    test('round-trips every flexit_* key with each supported type',
+        () async {
+      SharedPreferences.setMockInitialValues({
+        'flexit_sessions':
+            '[{"date":"2026-05-30","completedAt":"2026-05-30T12:00:00Z","type":"daily"}]',
+        'flexit_exercises_2026-05-30': ['hlr-cat-cow', 'hlr-pelvic-tilts'],
+        'flexit_p_2026-05-30': 1,
+        'flexit_dark_mode': true,
+        'flexit_weight_2026-05-30': 75500,
+        'unrelated_key': 'should not export',
+      });
+
+      final json = await exportAllJson();
+      // Wipe and reimport.
+      SharedPreferences.setMockInitialValues({});
+      final count = await importAllJson(json);
+      expect(count, 5);
+
+      expect(await getSessions(), hasLength(1));
+      expect(await getCompletedExercises('2026-05-30'),
+          {'hlr-cat-cow', 'hlr-pelvic-tilts'});
+      expect(await getPRating('2026-05-30'), 1);
+      expect(await getDarkMode(), isTrue);
+      expect(await getWeightGrams('2026-05-30'), 75500);
+    });
+
+    test('does not export keys outside the flexit_ namespace', () async {
+      SharedPreferences.setMockInitialValues({
+        'flexit_p_2026-05-30': 1,
+        'someone_else': 'value',
+      });
+      final json = await exportAllJson();
+      expect(json, contains('flexit_p_2026-05-30'));
+      expect(json, isNot(contains('someone_else')));
+    });
+
+    test('import does not delete existing keys not in the snapshot',
+        () async {
+      SharedPreferences.setMockInitialValues({
+        'flexit_p_2026-05-30': 1,
+      });
+      final json = await exportAllJson();
+      // Add another key, then re-import. The new key should survive.
+      await setBackPainRating('2026-05-30', 3);
+      final restored = await importAllJson(json);
+      expect(restored, 1);
+      expect(await getPRating('2026-05-30'), 1);
+      // The newer back-pain entry is untouched — import is additive.
+      expect(await getBackPainRating('2026-05-30'), 3);
+    });
+  });
+
   group('migrateCompletionPerSideV1', () {
     test('expands legacy single-side IDs to L/R for sided exercises',
         () async {
