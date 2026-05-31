@@ -6,7 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../data/exercises.dart';
 import '../data/daily_backup.dart';
 import '../data/storage.dart';
-import '../main.dart' show bumpDataChanged;
+import '../main.dart' show bumpDataChanged, setLatestWriteDiagnostic;
 import '../models/exercise.dart';
 import '../models/program.dart';
 import '../models/session.dart';
@@ -168,6 +168,9 @@ class _TodayScreenState extends State<TodayScreen>
     // the storage layer is lying about the write succeeding.
     final readback = await getAlcoholRating(_yesterdayKey);
     final allKeys = await debugCountFlexitKeys();
+    final t = DateTime.now().toIso8601String().substring(11, 19);
+    setLatestWriteDiagnostic(
+        '$t wrote=$value readback=$readback keys=$allKeys ($_yesterdayKey)');
     bumpDataChanged();
     HapticFeedback.lightImpact();
     if (mounted) {

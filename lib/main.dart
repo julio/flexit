@@ -17,6 +17,15 @@ final ValueNotifier<int> dataChangedCounter = ValueNotifier<int>(0);
 
 void bumpDataChanged() => dataChangedCounter.value++;
 
+/// Latest write attempt across the app — what was written, what we read
+/// back, and how many flexit_* keys are in prefs after. Surfaced in the
+/// Calendar debug strip so the diagnostic survives a tab switch.
+String _latestWriteDiagnostic = '(no writes yet)';
+String getLatestWriteDiagnostic() => _latestWriteDiagnostic;
+void setLatestWriteDiagnostic(String s) {
+  _latestWriteDiagnostic = s;
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // One-shot data migration for the per-side atomic ID format change.

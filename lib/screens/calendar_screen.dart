@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../data/exercises.dart';
 import '../data/storage.dart';
-import '../main.dart' show dataChangedCounter, bumpDataChanged;
+import '../main.dart'
+    show dataChangedCounter, bumpDataChanged, getLatestWriteDiagnostic;
 import '../models/exercise.dart';
 import '../models/session.dart';
 import '../theme.dart';
@@ -428,7 +429,8 @@ class CalendarScreenState extends State<CalendarScreen> {
                 'yest($y): p=${_pRatings[y]} '
                 'drinks=${_alcoholRatings[y]} '
                 'bp=${_backPainRatings[y]} '
-                'w=${_weightGrams[y]}',
+                'w=${_weightGrams[y]}\n'
+                'last write: ${getLatestWriteDiagnostic()}',
                 style: const TextStyle(
                     color: Colors.white,
                     fontSize: 10,
