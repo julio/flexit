@@ -6,13 +6,6 @@ import 'package:url_launcher/url_launcher.dart';
 import '../data/exercises.dart';
 import '../data/daily_backup.dart';
 import '../data/storage.dart';
-import '../main.dart'
-    show
-        alcoholRatingsByDate,
-        backPainRatingsByDate,
-        pRatingsByDate,
-        weightUnit,
-        weightsByDate;
 import '../models/exercise.dart';
 import '../models/program.dart';
 import '../models/session.dart';
@@ -148,9 +141,6 @@ class _TodayScreenState extends State<TodayScreen>
   Future<void> _setPRating(int value) async {
     final today = formatDate(DateTime.now());
     await setPRating(today, value);
-    // Push into the shared notifier so Calendar (and any other listener)
-    // rebuilds with the new value immediately — no tab-switch reload race.
-    pRatingsByDate.value = {...pRatingsByDate.value, today: value};
     HapticFeedback.lightImpact();
     if (mounted) setState(() => _pRating = value);
   }
@@ -158,10 +148,6 @@ class _TodayScreenState extends State<TodayScreen>
   Future<void> _setAlcoholYesterday(int value) async {
     if (_yesterdayKey.isEmpty) return;
     await setAlcoholRating(_yesterdayKey, value);
-    alcoholRatingsByDate.value = {
-      ...alcoholRatingsByDate.value,
-      _yesterdayKey: value,
-    };
     HapticFeedback.lightImpact();
     if (mounted) setState(() => _alcoholYesterday = value);
   }
@@ -169,10 +155,6 @@ class _TodayScreenState extends State<TodayScreen>
   Future<void> _setBackPain(int value) async {
     final today = formatDate(DateTime.now());
     await setBackPainRating(today, value);
-    backPainRatingsByDate.value = {
-      ...backPainRatingsByDate.value,
-      today: value,
-    };
     HapticFeedback.lightImpact();
     if (mounted) setState(() => _backPain = value);
   }
@@ -181,21 +163,36 @@ class _TodayScreenState extends State<TodayScreen>
     final today = formatDate(DateTime.now());
     if (grams == null) {
       await clearWeight(today);
-      // Drop from the shared notifier so Calendar (and anything else listening)
-      // sees the removal immediately — no tab-switch reload needed.
-      final next = {...weightsByDate.value}..remove(today);
-      weightsByDate.value = next;
     } else {
       await setWeightGrams(today, grams);
-      weightsByDate.value = {...weightsByDate.value, today: grams};
     }
     HapticFeedback.lightImpact();
-    if (mounted) setState(() => _weightGrams = grams);
+    if (!mounted) return;
+    setState(() => _weightGrams = grams);
+    // Visible confirmation so when this flow misbehaves we can see exactly
+    // where: no snackbar = save never ran; snackbar without calendar fill =
+    // calendar reload issue.
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    if (messenger == null) return;
+    messenger.hideCurrentSnackBar();
+    if (grams == null) {
+      messenger.showSnackBar(const SnackBar(
+        content: Text('Weight cleared'),
+        duration: Duration(milliseconds: 800),
+      ));
+    } else {
+      final shown = _weightUnit == 'kg'
+          ? '${(grams / 1000).toStringAsFixed(1)} kg'
+          : '${(grams / 453.59237).toStringAsFixed(1)} lb';
+      messenger.showSnackBar(SnackBar(
+        content: Text('Saved $shown'),
+        duration: const Duration(milliseconds: 800),
+      ));
+    }
   }
 
   Future<void> _setWeightUnit(String unit) async {
     await setWeightUnit(unit);
-    weightUnit.value = unit;
     if (mounted) setState(() => _weightUnit = unit);
   }
 

@@ -10,22 +10,6 @@ import 'theme.dart';
 /// Global notifier so any screen can flip the theme and the app rebuilds.
 final ValueNotifier<bool> themeIsDark = ValueNotifier<bool>(true);
 
-/// Single source of truth for every per-date rating. Today writes to these
-/// when the user enters/changes a value; Calendar listens and rebuilds. This
-/// kills the previous tab-switch-then-reload race that was leaving the
-/// calendar showing stale data for everything Julio entered on Today.
-final ValueNotifier<Map<String, int>> pRatingsByDate =
-    ValueNotifier<Map<String, int>>(const {});
-final ValueNotifier<Map<String, int>> alcoholRatingsByDate =
-    ValueNotifier<Map<String, int>>(const {});
-final ValueNotifier<Map<String, int>> backPainRatingsByDate =
-    ValueNotifier<Map<String, int>>(const {});
-final ValueNotifier<Map<String, int>> weightsByDate =
-    ValueNotifier<Map<String, int>>(const {});
-
-/// Same pattern for the chosen weight unit (kg / lb).
-final ValueNotifier<String> weightUnit = ValueNotifier<String>('kg');
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // One-shot data migration for the per-side atomic ID format change.
@@ -34,12 +18,6 @@ void main() async {
   // leave it alone — past backups are immutable. Otherwise write the current
   // SharedPreferences state to a new file. Runs once on every cold start.
   await runDailyBackupIfNeeded();
-  // Hydrate every shared rating notifier from prefs before the UI builds.
-  pRatingsByDate.value = await getAllPRatings();
-  alcoholRatingsByDate.value = await getAllAlcoholRatings();
-  backPainRatingsByDate.value = await getAllBackPainRatings();
-  weightsByDate.value = await getAllWeightGrams();
-  weightUnit.value = await getWeightUnit();
   final dark = await getDarkMode();
   themeIsDark.value = dark;
   if (dark) {
