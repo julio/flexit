@@ -342,8 +342,34 @@ class CalendarScreenState extends State<CalendarScreen> {
 
   void reload() => _loadSessions();
 
+  /// Tracks the last counter value we kicked a load for, so the build path
+  /// doesn't fire _loadSessions on every paint — only when something
+  /// actually changed.
+  int _lastSeenCounter = -1;
+
   @override
   Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: dataChangedCounter,
+      builder: (context, _) {
+        // Whenever the counter has advanced since the last build, kick a
+        // fresh load. Deferred to a microtask so we never call setState
+        // inside the build phase. This is the third independent path that
+        // converges saves into a Calendar reload: (1) Calendar's own
+        // initState listener, (2) HomeShell's listener, (3) this rebuild
+        // hook. If any one of them fires, the data refreshes.
+        if (_lastSeenCounter != dataChangedCounter.value) {
+          _lastSeenCounter = dataChangedCounter.value;
+          Future.microtask(() {
+            if (mounted) _loadSessions();
+          });
+        }
+        return _buildScaffold(context);
+      },
+    );
+  }
+
+  Widget _buildScaffold(BuildContext context) {
     final currentStreak = getCurrentStreak(_sessions);
     final longestStreak = getLongestStreak(_sessions);
     final totalSessions = _sessions.length;
@@ -377,6 +403,49 @@ class CalendarScreenState extends State<CalendarScreen> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
         children: [
+          // Always-visible diagnostic strip. Shows, for the active
+          // measurement, how many entries Calendar currently has in memory
+          // and what yesterday's value is. If you tap "No drinks" on Today
+          // and `yest=null` here, the calendar isn't seeing the save. If
+          // `yest=0` but the cell is still empty, it's a paint bug.
+          Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.deepPurple.withValues(alpha: 0.85),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Builder(builder: (_) {
+              final y = formatDate(
+                  DateTime.now().subtract(const Duration(days: 1)));
+              final Map<String, int> map;
+              switch (_measurement) {
+                case 'p':
+                  map = _pRatings;
+                  break;
+                case 'drinks':
+                  map = _alcoholRatings;
+                  break;
+                case 'backpain':
+                  map = _backPainRatings;
+                  break;
+                case 'weight':
+                  map = _weightGrams;
+                  break;
+                default:
+                  map = const {};
+              }
+              return Text(
+                'v=${dataChangedCounter.value} · '
+                '$_measurement: ${map.length} entries · '
+                'yest($y)=${map[y]} · today=${map[today]}',
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontFamily: 'Menlo'),
+              );
+            }),
+          ),
           // Stats row
           Row(
             children: [
