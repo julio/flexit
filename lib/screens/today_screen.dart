@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../data/exercises.dart';
+import '../data/daily_backup.dart';
 import '../data/storage.dart';
 import '../models/exercise.dart';
 import '../models/program.dart';
@@ -61,6 +62,9 @@ class _TodayScreenState extends State<TodayScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state != AppLifecycleState.resumed) return;
+    // First foreground of a new day → write that day's backup file if it
+    // doesn't already exist. Past days' files are never touched.
+    runDailyBackupIfNeeded();
     // If the date changed while backgrounded, blow away the stale state and
     // reload — otherwise yesterday's completion banner sticks around.
     final todayKey = formatDate(DateTime.now());

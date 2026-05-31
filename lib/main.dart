@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'data/daily_backup.dart';
 import 'data/storage.dart';
 import 'screens/today_screen.dart';
 import 'screens/calendar_screen.dart';
@@ -13,6 +14,10 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // One-shot data migration for the per-side atomic ID format change.
   await migrateCompletionPerSideV1();
+  // Append-only daily backup. If today's snapshot already exists on disk we
+  // leave it alone — past backups are immutable. Otherwise write the current
+  // SharedPreferences state to a new file. Runs once on every cold start.
+  await runDailyBackupIfNeeded();
   final dark = await getDarkMode();
   themeIsDark.value = dark;
   if (dark) {

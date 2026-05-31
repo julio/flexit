@@ -45,5 +45,12 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!-- Expose the app's Documents directory (where daily backups live) to the
+	     Files app under "On My iPhone → FlexIt", so backups can be copied off
+	     the device before an app delete / reinstall would otherwise wipe them. -->
+	<key>UIFileSharingEnabled</key>
+	<true/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
 </dict>
 </plist>

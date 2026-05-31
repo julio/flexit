@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../data/daily_backup.dart';
 import '../data/exercises.dart';
 import '../data/storage.dart';
 import '../main.dart' show themeIsDark;
@@ -100,6 +101,123 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await _load();
   }
 
+  Future<void> _showBackupsList() async {
+    final files = await listBackups();
+    if (!mounted) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.card,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetCtx) {
+        if (files.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.all(20),
+            child: Text(
+              'No backups yet. The first backup is written the next time '
+              'the app cold-starts or comes back from background.',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+            ),
+          );
+        }
+        return ListView.builder(
+          shrinkWrap: true,
+          padding: const EdgeInsets.all(16),
+          itemCount: files.length,
+          itemBuilder: (_, i) {
+            final f = files[i];
+            final name = f.uri.pathSegments.last;
+            final size = f.statSync().size;
+            return GestureDetector(
+              onTap: () async {
+                Navigator.of(sheetCtx).pop();
+                if (!mounted) return;
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    backgroundColor: AppColors.card,
+                    title: Text(
+                      'Restore from $name?',
+                      style: TextStyle(color: AppColors.text, fontSize: 16),
+                    ),
+                    content: Text(
+                      'Existing values will be overwritten where the backup '
+                      'has entries. Newer values not present in this backup '
+                      'are kept as-is.',
+                      style: TextStyle(
+                          color: AppColors.textSecondary, fontSize: 13),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(false),
+                        child: Text('Cancel',
+                            style: TextStyle(
+                                color: AppColors.textSecondary)),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(true),
+                        child: Text('Restore',
+                            style: TextStyle(
+                                color: AppColors.accent,
+                                fontWeight: FontWeight.w700)),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirmed != true || !mounted) return;
+                try {
+                  final n = await restoreFromBackup(f);
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                          'Restored $n keys from $name. Switch tabs to refresh.'),
+                      duration: const Duration(seconds: 5),
+                    ),
+                  );
+                  await _load();
+                } catch (e) {
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Restore failed: $e')),
+                  );
+                }
+              },
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.bg,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.cardBorder),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.history, color: AppColors.accent, size: 18),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        name,
+                        style: TextStyle(
+                            color: AppColors.text, fontSize: 14),
+                      ),
+                    ),
+                    Text(
+                      '${(size / 1024).toStringAsFixed(1)} KB',
+                      style: TextStyle(
+                          color: AppColors.textSecondary, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   Future<void> _exportToClipboard() async {
     final json = await exportAllJson();
     await Clipboard.setData(ClipboardData(text: json));
@@ -193,9 +311,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const _SectionHeader('DATA'),
                 const SizedBox(height: 12),
                 _ActionTile(
+                  label: 'Daily backups on device',
+                  description:
+                      'One file per day, written automatically the first time the app starts up or comes back from background that day. Past backups are never overwritten. Tap to list and optionally restore.',
+                  icon: Icons.history_toggle_off,
+                  onTap: _showBackupsList,
+                ),
+                _ActionTile(
                   label: 'Back up to clipboard',
                   description:
-                      'Copies every session, exercise, weight, p/drinks/back-pain rating to the clipboard as JSON. Paste it into Notes or email *immediately* — the clipboard is not a backup.',
+                      'On-demand copy of every flexit_* key as JSON. Useful if you want to stash a backup off the device — paste into Notes / email / iCloud Drive.',
                   icon: Icons.ios_share,
                   onTap: _exportToClipboard,
                 ),
