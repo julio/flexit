@@ -844,6 +844,11 @@ class CalendarScreenState extends State<CalendarScreen> {
               final trailing = atomicCount > 1
                   ? '$doneUnits/$atomicCount'
                   : e.duration;
+              final stateColor = done
+                  ? AppColors.success
+                  : partial
+                      ? AppColors.warning
+                      : AppColors.missed;
               final row = Padding(
                 padding: const EdgeInsets.symmetric(vertical: 6),
                 child: Row(
@@ -853,12 +858,8 @@ class CalendarScreenState extends State<CalendarScreen> {
                           ? Icons.check_circle
                           : partial
                               ? Icons.adjust
-                              : Icons.radio_button_unchecked,
-                      color: done
-                          ? AppColors.success
-                          : partial
-                              ? AppColors.warning
-                              : AppColors.textMuted,
+                              : Icons.cancel,
+                      color: stateColor,
                       size: 16,
                     ),
                     const SizedBox(width: 8),
@@ -867,11 +868,7 @@ class CalendarScreenState extends State<CalendarScreen> {
                         e.name,
                         style: TextStyle(
                           fontSize: 13,
-                          color: done
-                              ? AppColors.success
-                              : partial
-                                  ? AppColors.warning
-                                  : AppColors.textMuted,
+                          color: stateColor,
                           decoration: done ? TextDecoration.lineThrough : null,
                           decorationColor: AppColors.success,
                         ),
@@ -883,9 +880,7 @@ class CalendarScreenState extends State<CalendarScreen> {
                         fontSize: 11,
                         color: done
                             ? AppColors.success.withValues(alpha: 0.6)
-                            : partial
-                                ? AppColors.warning
-                                : AppColors.textMuted,
+                            : stateColor,
                       ),
                     ),
                   ],
