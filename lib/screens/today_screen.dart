@@ -139,12 +139,26 @@ class _TodayScreenState extends State<TodayScreen>
     }
   }
 
+  void _flash(String msg) {
+    final m = ScaffoldMessenger.maybeOf(context);
+    if (m == null) return;
+    m.hideCurrentSnackBar();
+    m.showSnackBar(SnackBar(
+      content: Text(msg),
+      duration: const Duration(milliseconds: 1200),
+      backgroundColor: AppColors.accent,
+    ));
+  }
+
   Future<void> _setPRating(int value) async {
     final today = formatDate(DateTime.now());
     await setPRating(today, value);
     bumpDataChanged();
     HapticFeedback.lightImpact();
-    if (mounted) setState(() => _pRating = value);
+    if (mounted) {
+      setState(() => _pRating = value);
+      _flash('Saved p=$value for $today');
+    }
   }
 
   Future<void> _setAlcoholYesterday(int value) async {
@@ -152,7 +166,10 @@ class _TodayScreenState extends State<TodayScreen>
     await setAlcoholRating(_yesterdayKey, value);
     bumpDataChanged();
     HapticFeedback.lightImpact();
-    if (mounted) setState(() => _alcoholYesterday = value);
+    if (mounted) {
+      setState(() => _alcoholYesterday = value);
+      _flash('Saved drinks=$value for $_yesterdayKey');
+    }
   }
 
   Future<void> _setBackPain(int value) async {
@@ -160,7 +177,10 @@ class _TodayScreenState extends State<TodayScreen>
     await setBackPainRating(today, value);
     bumpDataChanged();
     HapticFeedback.lightImpact();
-    if (mounted) setState(() => _backPain = value);
+    if (mounted) {
+      setState(() => _backPain = value);
+      _flash('Saved backpain=$value for $today');
+    }
   }
 
   Future<void> _setWeightGrams(int? grams) async {

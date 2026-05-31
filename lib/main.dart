@@ -81,6 +81,26 @@ class _HomeShellState extends State<HomeShell> {
   final _calendarKey = GlobalKey<CalendarScreenState>();
 
   @override
+  void initState() {
+    super.initState();
+    // Belt-and-suspenders: in addition to Calendar's own listener on
+    // dataChangedCounter, HomeShell also force-reloads Calendar on every
+    // bump. If the in-Calendar listener somehow fails to fire (lifecycle,
+    // GlobalKey timing), this path still propagates the save.
+    dataChangedCounter.addListener(_forceCalendarReload);
+  }
+
+  @override
+  void dispose() {
+    dataChangedCounter.removeListener(_forceCalendarReload);
+    super.dispose();
+  }
+
+  void _forceCalendarReload() {
+    _calendarKey.currentState?.reload();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: IndexedStack(
