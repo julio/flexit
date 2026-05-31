@@ -217,6 +217,7 @@ const _hlrWakeUp = ExerciseBlock(
           'Face-down, hands under shoulders, press the chest up while the hips stay heavy on the floor. Hold each rep only as long as it feels good — no fixed count.',
       cue:
           'Watch where the pain goes. If symptoms move toward the spine (centralize) you can keep going; if they spread down the leg, stop and skip cobra today.',
+      searchQuery: 'mckenzie press up extension low back exercise',
     ),
   ],
 );
@@ -260,6 +261,7 @@ const _hlrMobilize = ExerciseBlock(
           'Lie face-down with a lacrosse ball under the right anterior hip (just inside the bony ASIS, on the iliacus). Breathe; let the tissue soften before any stretching.',
       cue:
           'Tissue quality first, then length. This is what makes the half-kneeling stretch actually work.',
+      searchQuery: 'iliacus release lacrosse ball self massage psoas',
     ),
     Exercise(
       id: 'hlr-hip-flexor-stretch-reach',
@@ -270,6 +272,7 @@ const _hlrMobilize = ExerciseBlock(
           'Back knee down, front foot forward; squeeze the back glute, then tuck the pelvis under, then reach the same-side arm overhead.',
       cue:
           'Cue order matters: glute squeeze → posterior pelvic tilt → reach. No rib flare on the overhead reach — if your ribs lift, you traded the hip stretch for lumbar extension.',
+      searchQuery: 'half kneeling hip flexor stretch overhead reach',
     ),
     Exercise(
       id: 'hlr-90-90-switches',
@@ -287,6 +290,7 @@ const _hlrMobilize = ExerciseBlock(
           'In the 90/90 position, lift the back-leg shin a quarter-inch off the floor and hold 5 seconds. Keep the pelvis from rolling.',
       cue:
           'Isolated end-range internal rotation — the right side will be much harder, and that is exactly the point.',
+      searchQuery: '90 90 hip internal rotation lift off shin box',
     ),
     Exercise(
       id: 'hlr-figure-4',
@@ -304,6 +308,7 @@ const _hlrMobilize = ExerciseBlock(
           'Weeks 1–2: prone press-ups only — hands under shoulders, hips stay heavy, gentle press, return. Watch where symptoms go. Week 3 onward, only if symptoms centralized: progressively build toward straight-arm upward dog over the remaining weeks.',
       cue:
           'Symptom centralization gates the progression. If pain moves toward the spine across reps you can keep going; if it spreads down the leg, stop.',
+      searchQuery: 'mckenzie press up progression upward dog low back',
     ),
     Exercise(
       id: 'hlr-adductor-rocks',
@@ -312,6 +317,7 @@ const _hlrMobilize = ExerciseBlock(
       description:
           'On all fours; extend one leg out to side with foot flat; rock hips back.',
       cue: 'Feel inner thigh stretch.',
+      searchQuery: 'adductor rocks mobility cossack quadruped',
     ),
     Exercise(
       id: 'hlr-worlds-greatest',
@@ -479,6 +485,7 @@ const _hlrStrengthW2 = ExerciseBlock(
           'Feet hip-width, hands on the front of the thighs. Push hips straight back, slide the hands down the thighs until you feel hamstring tension, return. No weight — pattern only.',
       cue:
           'Grooves the hinge before you load it. Spine stays long; chest leads, not collapses.',
+      searchQuery: 'hip hinge pattern bodyweight tutorial deadlift prep',
     ),
     Exercise(
       id: 'hlr-wall-sit',
@@ -559,6 +566,7 @@ const _hlrStrengthW3 = ExerciseBlock(
           'Light kettlebell or single dumbbell in front. Hinge at the hip — push hips back, slide the weight down the thighs to mid-shin, return.',
       cue:
           'Hinge, not squat. Spine stays long; bar path tight to the legs.',
+      searchQuery: 'romanian deadlift kettlebell technique form',
     ),
     Exercise(
       id: 'hlr-wall-sit',
@@ -637,6 +645,7 @@ const _hlrStrengthW4 = ExerciseBlock(
       description:
           'Light kettlebell or single dumbbell in front. Hinge at the hip — push hips back, slide the weight down the thighs to mid-shin, return.',
       cue: 'Hinge, not squat. Spine stays long.',
+      searchQuery: 'romanian deadlift kettlebell technique form',
     ),
     Exercise(
       id: 'hlr-wall-sit',
@@ -664,6 +673,7 @@ const _hlrStrengthW4 = ExerciseBlock(
           'Side plank from the feet, but the top foot rests on a chair seat instead of stacking on the bottom foot. Shorter moment arm, full-position alignment.',
       cue:
           'Intermediate step between modified (knees down) and full (feet stacked). Hips stay stacked; line stays straight.',
+      searchQuery: 'side plank top foot elevated chair regression',
     ),
     Exercise(
       id: 'hlr-chair-squat-test',
@@ -674,6 +684,7 @@ const _hlrStrengthW4 = ExerciseBlock(
           'Stand in front of a knee-height chair. Sit-to-stand for 8 reps. Watch for the lumbar rounding before contact with the chair or knees caving in.',
       cue:
           'This is a gate — if you can do 8 clean reps with a neutral spine, you can introduce the goblet squat in Week 5. If you cannot, stay with this until you can.',
+      searchQuery: 'sit to stand test box squat assessment',
     ),
   ],
 );
@@ -718,6 +729,7 @@ const _hlrStrengthW5 = ExerciseBlock(
       description:
           'Hold a dumbbell or kettlebell at chest height; squat to a deep, controlled position and stand.',
       cue: 'Chest up, knees track feet, drive through midfoot.',
+      searchQuery: 'goblet squat kettlebell technique form',
     ),
     Exercise(
       id: 'hlr-walking-lunge',
@@ -727,6 +739,7 @@ const _hlrStrengthW5 = ExerciseBlock(
       description:
           'Step forward into a lunge, drive up off the front heel, and walk into the next step.',
       cue: 'Long step. Stay tall through the torso.',
+      searchQuery: 'walking lunge technique form bodyweight',
     ),
     Exercise(
       id: 'hlr-single-leg-deadlift',
@@ -736,6 +749,8 @@ const _hlrStrengthW5 = ExerciseBlock(
       description:
           'Hand on wall for balance; hinge at the hip, back leg extends behind you, return.',
       cue: 'Hinge, do not squat. Spine stays long.',
+      searchQuery:
+          'single leg deadlift hand on wall assisted technique',
     ),
     Exercise(
       id: 'hlr-side-plank-full',
@@ -788,6 +803,7 @@ const _hlrStrengthW6 = ExerciseBlock(
       description:
           'Hold a dumbbell or kettlebell at chest height; squat to a deep, controlled position and stand.',
       cue: 'Chest up, knees track feet, drive through midfoot.',
+      searchQuery: 'goblet squat kettlebell technique form',
     ),
     Exercise(
       id: 'hlr-walking-lunge',
@@ -797,6 +813,7 @@ const _hlrStrengthW6 = ExerciseBlock(
       description:
           'Step forward into a lunge, drive up off the front heel, and walk into the next step.',
       cue: 'Long step. Stay tall through the torso.',
+      searchQuery: 'walking lunge technique form bodyweight',
     ),
     Exercise(
       id: 'hlr-single-leg-deadlift',
@@ -806,6 +823,8 @@ const _hlrStrengthW6 = ExerciseBlock(
       description:
           'Hand on wall for balance; hinge at the hip, back leg extends behind you, return.',
       cue: 'Hinge, do not squat. Spine stays long.',
+      searchQuery:
+          'single leg deadlift hand on wall assisted technique',
     ),
     Exercise(
       id: 'hlr-side-plank-full',

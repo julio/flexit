@@ -24,6 +24,12 @@ class Exercise {
   final String description;
   final String cue;
   final String? videoUrl;
+
+  /// Override for the auto-generated YouTube search when [videoUrl] is null.
+  /// Most exercises don't need this — the name alone yields decent results.
+  /// Use it when the display name is too unusual / ambiguous to search well
+  /// (e.g. "Right Anterior Hip Release" → "iliacus release lacrosse ball").
+  final String? searchQuery;
   final int sets;
   final TimerSpec? timer;
   final RepSpec? reps;
@@ -35,6 +41,7 @@ class Exercise {
     required this.description,
     required this.cue,
     this.videoUrl,
+    this.searchQuery,
     this.sets = 1,
     this.timer,
     this.reps,
@@ -66,13 +73,12 @@ class Exercise {
     return result;
   }
 
-  /// Where to send the user when they tap the video button. If the exercise
-  /// has a curated `videoUrl`, use that; otherwise return a YouTube search
-  /// URL keyed off the exercise name so they always have a way to look it up.
+  /// Where to send the user when they tap the video button. Priority:
+  /// curated [videoUrl] → [searchQuery] override → "${name} exercise" search.
   String get effectiveVideoUrl {
     final explicit = videoUrl;
     if (explicit != null) return explicit;
-    final query = Uri.encodeComponent('$name exercise');
+    final query = Uri.encodeComponent(searchQuery ?? '$name exercise');
     return 'https://www.youtube.com/results?search_query=$query';
   }
 

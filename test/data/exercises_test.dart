@@ -502,6 +502,34 @@ void main() {
       expect(e.effectiveVideoUrl, contains('Greatest'));
     });
 
+    test('searchQuery overrides the default name-based search', () {
+      const e = Exercise(
+        id: 'x',
+        name: 'Right Anterior Hip Release',
+        duration: '5 min',
+        description: 'd',
+        cue: 'c',
+        searchQuery: 'iliacus release lacrosse ball self massage',
+      );
+      expect(e.effectiveVideoUrl, contains('iliacus'));
+      expect(e.effectiveVideoUrl, contains('lacrosse'));
+      // The unusual display name should NOT leak into the URL.
+      expect(e.effectiveVideoUrl, isNot(contains('Anterior')));
+    });
+
+    test('curated videoUrl beats both searchQuery and name', () {
+      const e = Exercise(
+        id: 'x',
+        name: 'X',
+        duration: '1 rep',
+        description: 'd',
+        cue: 'c',
+        videoUrl: 'https://example.com/curated',
+        searchQuery: 'should not be used',
+      );
+      expect(e.effectiveVideoUrl, 'https://example.com/curated');
+    });
+
     test('every Daily 30 and HLR exercise yields a non-empty URL', () {
       final allExercises = <Exercise>[
         ...dailyBlocks.expand((b) => b.exercises),
