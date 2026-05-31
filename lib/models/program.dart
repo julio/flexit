@@ -20,13 +20,45 @@ class Program {
 
   /// Program week (1-indexed). Weeks past the last defined one all map to
   /// the last week — that's the "maintenance" phase.
-  int currentWeek(DateTime startDate, DateTime now) {
+  ///
+  /// When [doneDates] is provided, the program "extends itself" through
+  /// missed days: week N+1 only begins after the user has completed 7
+  /// sessions of week N (not just 7 calendar days). Capped at the calendar
+  /// week so doing 7 sessions in 3 days still keeps you in week 1 for the
+  /// remaining calendar days.
+  ///
+  /// With an empty [doneDates] (the default) it falls back to pure
+  /// calendar-day math — convenient for tests and for callers that don't
+  /// have the session list handy.
+  int currentWeek(
+    DateTime startDate,
+    DateTime targetDate, [
+    Set<String> doneDates = const {},
+  ]) {
     final start = DateTime(startDate.year, startDate.month, startDate.day);
-    final today = DateTime(now.year, now.month, now.day);
-    final daysSinceStart = today.difference(start).inDays;
-    if (daysSinceStart < 0) return 1;
-    return (daysSinceStart ~/ 7) + 1;
+    final target = DateTime(targetDate.year, targetDate.month, targetDate.day);
+    if (target.isBefore(start)) return 1;
+
+    final calendarDays = target.difference(start).inDays;
+    final calendarWeek = (calendarDays ~/ 7) + 1;
+
+    if (doneDates.isEmpty) return calendarWeek;
+
+    final startKey = _fmtDate(start);
+    final targetKey = _fmtDate(target);
+    // Sessions strictly before [target] — those determine which week the
+    // user enters [target] in.
+    final sessions = doneDates
+        .where(
+            (d) => d.compareTo(startKey) >= 0 && d.compareTo(targetKey) < 0)
+        .length;
+    final sessionWeek = (sessions ~/ 7) + 1;
+
+    return sessionWeek < calendarWeek ? sessionWeek : calendarWeek;
   }
+
+  static String _fmtDate(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
   WeekProgram weekProgram(int week) {
     if (week < 1) return weeks.first;

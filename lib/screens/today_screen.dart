@@ -90,7 +90,9 @@ class _TodayScreenState extends State<TodayScreen>
     WeekProgram? weekProgram;
     if (routine.hasProgram) {
       final start = await ensureProgramStartDate(routine.id);
-      final week = routine.program!.currentWeek(start, DateTime.now());
+      final sessionDates = sessions.map((s) => s.date).toSet();
+      final week = routine.program!
+          .currentWeek(start, DateTime.now(), sessionDates);
       blocks = routine.program!.blocksForWeek(week);
       weekProgram = routine.program!.weekProgram(week);
     } else {

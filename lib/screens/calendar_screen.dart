@@ -73,7 +73,9 @@ class CalendarScreenState extends State<CalendarScreen> {
       return _routine.blocks;
     }
     final date = DateTime.parse(dateStr);
-    final week = _routine.program!.currentWeek(_programStart!, date);
+    final sessionDates = _sessions.map((s) => s.date).toSet();
+    final week = _routine.program!
+        .currentWeek(_programStart!, date, sessionDates);
     return _routine.program!.blocksForWeek(week);
   }
 
@@ -787,8 +789,9 @@ class CalendarScreenState extends State<CalendarScreen> {
             Builder(builder: (_) {
               final parts = <String>['Upcoming'];
               if (_routine.hasProgram && _programStart != null) {
-                final week = _routine.program!
-                    .currentWeek(_programStart!, DateTime.parse(date));
+                final sessionDates = _sessions.map((s) => s.date).toSet();
+                final week = _routine.program!.currentWeek(
+                    _programStart!, DateTime.parse(date), sessionDates);
                 final wp = _routine.program!.weekProgram(week);
                 parts.add('Week $week · ${wp.phase}');
                 parts.add('Walk: ${wp.walkingTarget}');

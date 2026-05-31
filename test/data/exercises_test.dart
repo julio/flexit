@@ -257,6 +257,52 @@ void main() {
           1);
     });
 
+    test('currentWeek session-aware: misses extend the current week', () {
+      final start = DateTime(2026, 5, 26);
+      // Day 8 calendar with 6 sessions (1 missed) — still week 1.
+      final target = start.add(const Duration(days: 7));
+      final completed = {
+        '2026-05-26', '2026-05-27', '2026-05-28', '2026-05-29',
+        '2026-05-31', '2026-06-01', // missed 2026-05-30
+      };
+      expect(
+          hipLumbarResetProgram.currentWeek(start, target, completed), 1);
+    });
+
+    test('currentWeek session-aware: week 2 starts after 7 sessions', () {
+      final start = DateTime(2026, 5, 26);
+      // Day 8 calendar with 7 perfect sessions on days 1-7 → week 2.
+      final target = start.add(const Duration(days: 7));
+      final completed = {
+        '2026-05-26', '2026-05-27', '2026-05-28', '2026-05-29',
+        '2026-05-30', '2026-05-31', '2026-06-01',
+      };
+      expect(
+          hipLumbarResetProgram.currentWeek(start, target, completed), 2);
+    });
+
+    test('currentWeek session-aware: capped by calendar week', () {
+      final start = DateTime(2026, 5, 26);
+      // Calendar day 3 with somehow 14 sessions logged — capped at week 1
+      // (the calendar ceiling) because only 2 calendar days have passed.
+      final target = start.add(const Duration(days: 2));
+      final completed = {
+        for (var i = 0; i < 14; i++)
+          '2026-05-${(20 + i).toString().padLeft(2, '0')}'
+      };
+      expect(
+          hipLumbarResetProgram.currentWeek(start, target, completed), 1);
+    });
+
+    test('currentWeek falls back to calendar math when no sessions given',
+        () {
+      final start = DateTime(2026, 5, 26);
+      expect(
+          hipLumbarResetProgram.currentWeek(
+              start, start.add(const Duration(days: 7))),
+          2);
+    });
+
     test('blocksForWeek inserts the right strength block', () {
       final w1Blocks = hipLumbarResetProgram.blocksForWeek(1);
       final w3Blocks = hipLumbarResetProgram.blocksForWeek(3);

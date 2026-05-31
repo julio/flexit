@@ -17,6 +17,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final Map<String, int> _repValues = {};
   Routine _routine = routines.first;
   DateTime? _programStart;
+  Set<String> _sessionDates = const {};
   bool _loading = true;
 
   @override
@@ -40,6 +41,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final routine = routineById(routineId);
     final programStart =
         routine.hasProgram ? await getProgramStartDate(routine.id) : null;
+    final sessions = await getSessions();
     final timers = <String, int>{};
     for (final e in routine.blocks
         .expand((b) => b.exercises)
@@ -60,6 +62,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       setState(() {
         _routine = routine;
         _programStart = programStart;
+        _sessionDates = sessions.map((s) => s.date).toSet();
         _timerValues
           ..clear()
           ..addAll(timers);
@@ -127,6 +130,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   _ProgramStartTile(
                     routine: _routine,
                     startDate: _programStart!,
+                    sessionDates: _sessionDates,
                     onTap: _pickProgramStartDate,
                   ),
                 const SizedBox(height: 16),
@@ -466,11 +470,13 @@ class _RoutineTile extends StatelessWidget {
 class _ProgramStartTile extends StatelessWidget {
   final Routine routine;
   final DateTime startDate;
+  final Set<String> sessionDates;
   final VoidCallback onTap;
 
   const _ProgramStartTile({
     required this.routine,
     required this.startDate,
+    required this.sessionDates,
     required this.onTap,
   });
 
@@ -485,7 +491,8 @@ class _ProgramStartTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final program = routine.program!;
-    final week = program.currentWeek(startDate, DateTime.now());
+    final week =
+        program.currentWeek(startDate, DateTime.now(), sessionDates);
     final cappedWeek = week.clamp(1, program.weeks.length);
     final isMaintenance = week > program.weeks.length;
     final label = isMaintenance
