@@ -646,8 +646,13 @@ class CalendarScreenState extends State<CalendarScreen> {
           if (pv != null) cellFill = AppColors.pColor(pv);
           break;
         case 'drinks':
+          // Binary fill: any non-zero value = drank (red); 0 = didn't drink
+          // (white); null/missing = empty cell. Legacy multi-level entries
+          // (2..4 from the old scale) collapse to red here.
           final av = _alcoholRatings[dateStr];
-          if (av != null) cellFill = AppColors.alcoholColor(av);
+          if (av != null) {
+            cellFill = av > 0 ? AppColors.missed : Colors.white;
+          }
           break;
         case 'backpain':
           final bv = _backPainRatings[dateStr];
