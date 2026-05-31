@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../data/exercises.dart';
 import '../data/storage.dart';
+import '../main.dart' show dataChangedCounter, bumpDataChanged;
 import '../models/exercise.dart';
 import '../models/session.dart';
 import '../theme.dart';
@@ -34,6 +35,16 @@ class CalendarScreenState extends State<CalendarScreen> {
   void initState() {
     super.initState();
     _loadSessions();
+    // When the Today screen (or anywhere else) bumps the counter after a
+    // save, re-read all the data so the calendar grid reflects it. No need
+    // to wait for a tab tap.
+    dataChangedCounter.addListener(_loadSessions);
+  }
+
+  @override
+  void dispose() {
+    dataChangedCounter.removeListener(_loadSessions);
+    super.dispose();
   }
 
   Future<void> _loadSessions() async {
@@ -118,6 +129,7 @@ class CalendarScreenState extends State<CalendarScreen> {
     final date = _selectedDate;
     if (date == null) return;
     await setPRating(date, value);
+    bumpDataChanged();
     if (mounted) {
       setState(() => _pRatings = {..._pRatings, date: value});
     }
@@ -127,6 +139,7 @@ class CalendarScreenState extends State<CalendarScreen> {
     final date = _selectedDate;
     if (date == null) return;
     await setAlcoholRating(date, value);
+    bumpDataChanged();
     if (mounted) {
       setState(() => _alcoholRatings = {..._alcoholRatings, date: value});
     }
@@ -136,6 +149,7 @@ class CalendarScreenState extends State<CalendarScreen> {
     final date = _selectedDate;
     if (date == null) return;
     await setBackPainRating(date, value);
+    bumpDataChanged();
     if (mounted) {
       setState(() => _backPainRatings = {..._backPainRatings, date: value});
     }
@@ -155,6 +169,7 @@ class CalendarScreenState extends State<CalendarScreen> {
         setState(() => _weightGrams = {..._weightGrams, date: grams});
       }
     }
+    bumpDataChanged();
   }
 
   /// Long-press shortcut on a day cell: pop a sheet with just the value

@@ -10,6 +10,13 @@ import 'theme.dart';
 /// Global notifier so any screen can flip the theme and the app rebuilds.
 final ValueNotifier<bool> themeIsDark = ValueNotifier<bool>(true);
 
+/// Bumped any time a save lands. The Calendar screen listens and reruns
+/// its loader so a write on the Today screen shows up in the calendar grid
+/// without depending on the bottom-nav tap to trigger a reload.
+final ValueNotifier<int> dataChangedCounter = ValueNotifier<int>(0);
+
+void bumpDataChanged() => dataChangedCounter.value++;
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // One-shot data migration for the per-side atomic ID format change.

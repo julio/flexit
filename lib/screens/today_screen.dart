@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../data/exercises.dart';
 import '../data/daily_backup.dart';
 import '../data/storage.dart';
+import '../main.dart' show bumpDataChanged;
 import '../models/exercise.dart';
 import '../models/program.dart';
 import '../models/session.dart';
@@ -141,6 +142,7 @@ class _TodayScreenState extends State<TodayScreen>
   Future<void> _setPRating(int value) async {
     final today = formatDate(DateTime.now());
     await setPRating(today, value);
+    bumpDataChanged();
     HapticFeedback.lightImpact();
     if (mounted) setState(() => _pRating = value);
   }
@@ -148,6 +150,7 @@ class _TodayScreenState extends State<TodayScreen>
   Future<void> _setAlcoholYesterday(int value) async {
     if (_yesterdayKey.isEmpty) return;
     await setAlcoholRating(_yesterdayKey, value);
+    bumpDataChanged();
     HapticFeedback.lightImpact();
     if (mounted) setState(() => _alcoholYesterday = value);
   }
@@ -155,6 +158,7 @@ class _TodayScreenState extends State<TodayScreen>
   Future<void> _setBackPain(int value) async {
     final today = formatDate(DateTime.now());
     await setBackPainRating(today, value);
+    bumpDataChanged();
     HapticFeedback.lightImpact();
     if (mounted) setState(() => _backPain = value);
   }
@@ -166,6 +170,7 @@ class _TodayScreenState extends State<TodayScreen>
     } else {
       await setWeightGrams(today, grams);
     }
+    bumpDataChanged();
     HapticFeedback.lightImpact();
     if (!mounted) return;
     setState(() => _weightGrams = grams);
