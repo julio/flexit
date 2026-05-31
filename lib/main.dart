@@ -89,9 +89,20 @@ class _HomeShellState extends State<HomeShell> {
         ),
         child: BottomNavigationBar(
           currentIndex: _currentIndex,
-          onTap: (i) {
+          onTap: (i) async {
+            // Drop focus from any active text field FIRST. The weight card's
+            // FocusNode listener commits on focus loss, so this forces any
+            // pending value to flush to prefs before the Calendar reload
+            // reads it.
+            FocusManager.instance.primaryFocus?.unfocus();
             setState(() => _currentIndex = i);
-            if (i == 1) _calendarKey.currentState?.reload();
+            if (i == 1) {
+              // Give the prefs writes a beat (SharedPreferences setInt is
+              // method-channel-async). 150ms is comfortably above the typical
+              // write latency on iOS without being user-perceptible.
+              await Future.delayed(const Duration(milliseconds: 150));
+              _calendarKey.currentState?.reload();
+            }
           },
           items: const [
             BottomNavigationBarItem(
