@@ -6,7 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../data/exercises.dart';
 import '../data/daily_backup.dart';
 import '../data/storage.dart';
-import '../main.dart' show bumpDataChanged, setLatestWriteDiagnostic;
+import '../main.dart' show bumpDataChanged;
 import '../models/exercise.dart';
 import '../models/program.dart';
 import '../models/session.dart';
@@ -139,45 +139,20 @@ class _TodayScreenState extends State<TodayScreen>
     }
   }
 
-  void _flash(String msg) {
-    final m = ScaffoldMessenger.maybeOf(context);
-    if (m == null) return;
-    m.hideCurrentSnackBar();
-    m.showSnackBar(SnackBar(
-      content: Text(msg),
-      duration: const Duration(milliseconds: 1200),
-      backgroundColor: AppColors.accent,
-    ));
-  }
-
   Future<void> _setPRating(int value) async {
     final today = formatDate(DateTime.now());
     await setPRating(today, value);
     bumpDataChanged();
     HapticFeedback.lightImpact();
-    if (mounted) {
-      setState(() => _pRating = value);
-      _flash('Saved p=$value for $today');
-    }
+    if (mounted) setState(() => _pRating = value);
   }
 
   Future<void> _setAlcoholYesterday(int value) async {
     if (_yesterdayKey.isEmpty) return;
     await setAlcoholRating(_yesterdayKey, value);
-    // Verify the write actually landed in prefs. If readback != value,
-    // the storage layer is lying about the write succeeding.
-    final readback = await getAlcoholRating(_yesterdayKey);
-    final allKeys = await debugCountFlexitKeys();
-    final t = DateTime.now().toIso8601String().substring(11, 19);
-    setLatestWriteDiagnostic(
-        '$t wrote=$value readback=$readback keys=$allKeys ($_yesterdayKey)');
     bumpDataChanged();
     HapticFeedback.lightImpact();
-    if (mounted) {
-      setState(() => _alcoholYesterday = value);
-      _flash(
-          'wrote=$value readback=$readback keys=$allKeys for $_yesterdayKey');
-    }
+    if (mounted) setState(() => _alcoholYesterday = value);
   }
 
   Future<void> _setBackPain(int value) async {
@@ -185,10 +160,7 @@ class _TodayScreenState extends State<TodayScreen>
     await setBackPainRating(today, value);
     bumpDataChanged();
     HapticFeedback.lightImpact();
-    if (mounted) {
-      setState(() => _backPain = value);
-      _flash('Saved backpain=$value for $today');
-    }
+    if (mounted) setState(() => _backPain = value);
   }
 
   Future<void> _setWeightGrams(int? grams) async {
@@ -200,28 +172,7 @@ class _TodayScreenState extends State<TodayScreen>
     }
     bumpDataChanged();
     HapticFeedback.lightImpact();
-    if (!mounted) return;
-    setState(() => _weightGrams = grams);
-    // Visible confirmation so when this flow misbehaves we can see exactly
-    // where: no snackbar = save never ran; snackbar without calendar fill =
-    // calendar reload issue.
-    final messenger = ScaffoldMessenger.maybeOf(context);
-    if (messenger == null) return;
-    messenger.hideCurrentSnackBar();
-    if (grams == null) {
-      messenger.showSnackBar(const SnackBar(
-        content: Text('Weight cleared'),
-        duration: Duration(milliseconds: 800),
-      ));
-    } else {
-      final shown = _weightUnit == 'kg'
-          ? '${(grams / 1000).toStringAsFixed(1)} kg'
-          : '${(grams / 453.59237).toStringAsFixed(1)} lb';
-      messenger.showSnackBar(SnackBar(
-        content: Text('Saved $shown'),
-        duration: const Duration(milliseconds: 800),
-      ));
-    }
+    if (mounted) setState(() => _weightGrams = grams);
   }
 
   Future<void> _setWeightUnit(String unit) async {

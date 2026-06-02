@@ -73,22 +73,6 @@ class CalendarScreenState extends State<CalendarScreen> {
         _routine = routine;
         _programStart = programStart;
       });
-      // Diagnostic — tells us at the moment of reload exactly what the
-      // calendar pulled out of prefs for today's weight.
-      final todayStr = formatDate(DateTime.now());
-      final g = weightGrams[todayStr];
-      final shown = g == null
-          ? '—'
-          : (weightUnit == 'kg'
-              ? '${(g / 1000).toStringAsFixed(1)} kg'
-              : '${(g / 453.59237).toStringAsFixed(1)} lb');
-      final messenger = ScaffoldMessenger.maybeOf(context);
-      messenger?.hideCurrentSnackBar();
-      messenger?.showSnackBar(SnackBar(
-        content: Text(
-            'Reload · ${weightGrams.length} weights · today: $shown'),
-        duration: const Duration(milliseconds: 1500),
-      ));
     }
   }
 
@@ -426,31 +410,6 @@ class CalendarScreenState extends State<CalendarScreen> {
             onPrev: () => _cycleMeasurement(-1),
             onNext: () => _cycleMeasurement(1),
           ),
-          if (_measurement == 'weight') ...[
-            const SizedBox(height: 8),
-            // Inline diagnostic: shows exactly what the calendar has in its
-            // weight map, including today's lookup. If you save 75.5 on Today
-            // and this still reads "today: —", the calendar isn't picking up
-            // the save (reload race / state issue). If this reads the right
-            // value but the cell still doesn't fill, it's a render bug.
-            Builder(builder: (_) {
-              final todayStr = formatDate(DateTime.now());
-              final g = _weightGrams[todayStr];
-              final shown = g == null
-                  ? '—'
-                  : (_weightUnit == 'kg'
-                      ? '${(g / 1000).toStringAsFixed(1)} kg'
-                      : '${(g / 453.59237).toStringAsFixed(1)} lb');
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: Text(
-                  'debug · ${_weightGrams.length} entries · today: $shown',
-                  style: TextStyle(
-                      color: AppColors.textMuted, fontSize: 11),
-                ),
-              );
-            }),
-          ],
           if (_measurement == 'weight' && _weightGrams.isNotEmpty) ...[
             const SizedBox(height: 8),
             GestureDetector(

@@ -143,13 +143,6 @@ Future<void> clearTimerEnd(String atomicId) async {
   await prefs.remove(_timerEndKey(atomicId));
 }
 
-/// Diagnostic only: count keys in SharedPreferences that start with the
-/// flexit_ namespace. Used to detect when writes don't land.
-Future<int> debugCountFlexitKeys() async {
-  final prefs = await SharedPreferences.getInstance();
-  return prefs.getKeys().where((k) => k.startsWith('flexit_')).length;
-}
-
 /// Snapshot every `flexit_*` key into a JSON string. Round-trips through
 /// [importAllJson]. Use to back up before risky deploys or to migrate data
 /// between devices.
