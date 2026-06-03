@@ -676,21 +676,21 @@ class CalendarScreenState extends State<CalendarScreen> {
       String? weightLabel;
       switch (_measurement) {
         case 'completion':
-          // Cup-fill: a single accent color fills the cell from the bottom
-          // proportional to how many exercises were completed. 0% = empty,
-          // 50% = half full, 100% = solid accent.
+          // Cup-fill: green fills the cell from the bottom up, proportional
+          // to how many exercises were completed. 0% = empty, 50% = half
+          // full, 100% = solid green.
           if (completionRatio != null && completionRatio > 0) {
             final r = completionRatio.clamp(0.0, 1.0);
             if (r >= 1.0) {
-              cellFill = AppColors.accent;
+              cellFill = AppColors.success;
             } else {
               cellGradient = LinearGradient(
                 begin: Alignment.bottomCenter,
                 end: Alignment.topCenter,
                 stops: [0, r, r, 1.0],
                 colors: [
-                  AppColors.accent,
-                  AppColors.accent,
+                  AppColors.success,
+                  AppColors.success,
                   Colors.transparent,
                   Colors.transparent,
                 ],
@@ -734,9 +734,9 @@ class CalendarScreenState extends State<CalendarScreen> {
             : Colors.black87;
       } else if (cellGradient != null) {
         // Partial cup fill — the number sits near the boundary between
-        // accent and the card background. Use the same legible color we'd
-        // pick for a fully-filled accent cell.
-        dayColor = ThemeData.estimateBrightnessForColor(AppColors.accent) ==
+        // the fill color and the card background. Use the same legible
+        // text color we'd pick for a fully-filled cell.
+        dayColor = ThemeData.estimateBrightnessForColor(AppColors.success) ==
                 Brightness.dark
             ? Colors.white
             : Colors.black87;
