@@ -71,18 +71,19 @@ void main() {
   });
 
   group('Routine picker', () {
-    testWidgets('both routine tiles render with the default selected',
+    testWidgets('all routine tiles render with the default selected',
         (tester) async {
       h = await installTestHarness();
       await pumpScreen(tester, const SettingsScreen(), settle: true);
 
+      expect(find.text('Daily PT'), findsOneWidget);
       expect(find.text('Hip & Lumbar Reset'), findsOneWidget);
       expect(find.text('Daily 30'), findsOneWidget);
 
-      // Default routine is Hip & Lumbar Reset -> its tile shows the checked
-      // radio; Daily 30 shows the unchecked radio.
+      // Default routine is Daily PT -> its tile shows the checked radio; the
+      // other two tiles show unchecked radios.
       expect(find.byIcon(Icons.radio_button_checked), findsOneWidget);
-      expect(find.byIcon(Icons.radio_button_unchecked), findsOneWidget);
+      expect(find.byIcon(Icons.radio_button_unchecked), findsNWidgets(2));
     });
 
     testWidgets('selecting Daily 30 persists the active routine id and reloads',
@@ -90,7 +91,7 @@ void main() {
       h = await installTestHarness();
       await pumpScreen(tester, const SettingsScreen(), settle: true);
 
-      expect(await getActiveRoutineId(), hipLumbarResetRoutineId);
+      expect(await getActiveRoutineId(), ptDailyRoutineId);
 
       await tester.tap(find.text('Daily 30'));
       await tester.pump(const Duration(milliseconds: 200));
@@ -276,8 +277,15 @@ void main() {
       h = await installTestHarness(prefs: {'flexit_routine': daily30RoutineId});
       await pumpScreen(tester, const SettingsScreen(), settle: true);
 
+      // The third routine tile pushed this button just past the bottom edge.
+      // It's already built (lazily off-screen), so scrollUntilVisible no-ops —
+      // ensureVisible scrolls the built widget into the viewport.
+      await tester.ensureVisible(find.text('Restore from clipboard'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Restore from clipboard'));
-      await tester.pump(const Duration(milliseconds: 200));
+      // _importFromClipboard awaits Clipboard.getData (method channel) before
+      // showing the snackbar — settle to flush that async gap + the animation.
+      await tester.pumpAndSettle();
 
       expect(find.text('Clipboard is empty.'), findsOneWidget);
     });

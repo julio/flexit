@@ -133,13 +133,18 @@ void main() {
   });
 
   group('routines', () {
-    test('exposes Daily 30 and Hip & Lumbar Reset', () {
+    test('exposes Daily PT, Daily 30 and Hip & Lumbar Reset', () {
       final ids = routines.map((r) => r.id).toSet();
-      expect(ids, {daily30RoutineId, hipLumbarResetRoutineId});
+      expect(ids,
+          {ptDailyRoutineId, daily30RoutineId, hipLumbarResetRoutineId});
     });
 
-    test('default routine is Hip & Lumbar Reset', () {
-      expect(defaultRoutineId, hipLumbarResetRoutineId);
+    test('default routine is Daily PT', () {
+      expect(defaultRoutineId, ptDailyRoutineId);
+    });
+
+    test('Daily PT is the first routine (the picker / fallback default)', () {
+      expect(routines.first.id, ptDailyRoutineId);
     });
 
     test('routineById falls back to first routine for unknown ids', () {
@@ -149,6 +154,65 @@ void main() {
     test('routineById returns the matching routine', () {
       expect(routineById(daily30RoutineId).blocks, dailyBlocks);
       expect(routineById(hipLumbarResetRoutineId).blocks, hipLumbarResetBlocks);
+      expect(routineById(ptDailyRoutineId).blocks, ptDailyBlocks);
+    });
+  });
+
+  group('Daily PT routine', () {
+    final pt = routineById(ptDailyRoutineId);
+
+    test('is a fixed (non-program) routine with a single block', () {
+      expect(pt.hasProgram, isFalse);
+      expect(pt.blocks.length, 1);
+    });
+
+    test('holds exactly the two PT exercises', () {
+      final ids =
+          ptDailyBlocks.expand((b) => b.exercises).map((e) => e.id).toList();
+      expect(ids, ['pt-90-90-hip-lift', 'pt-kneeling-hip-flexor']);
+    });
+
+    test('every exercise has required fields, a pt- prefix, and a video', () {
+      for (final e in ptDailyBlocks.expand((b) => b.exercises)) {
+        expect(e.id, startsWith('pt-'));
+        expect(e.name, isNotEmpty);
+        expect(e.duration, isNotEmpty);
+        expect(e.description, isNotEmpty);
+        expect(e.cue, isNotEmpty);
+        expect(e.videoUrl, startsWith('https://www.youtube.com/'));
+      }
+    });
+
+    test('90/90 hip lift is a single untimed checkbox', () {
+      final lift = ptDailyBlocks
+          .expand((b) => b.exercises)
+          .firstWhere((e) => e.id == 'pt-90-90-hip-lift');
+      expect(lift.timer, isNull);
+      expect(lift.parsedDurationSeconds, isNull);
+      expect(lift.atomicIds, ['pt-90-90-hip-lift']);
+    });
+
+    test('kneeling stretch is a 30s-timed per-side hold (L/R checkboxes)', () {
+      final stretch = ptDailyBlocks
+          .expand((b) => b.exercises)
+          .firstWhere((e) => e.id == 'pt-kneeling-hip-flexor');
+      expect(stretch.timer!.defaultSeconds, 30);
+      expect(stretch.sidesPerSet, 2);
+      expect(stretch.atomicIds,
+          ['pt-kneeling-hip-flexor:L', 'pt-kneeling-hip-flexor:R']);
+    });
+
+    test('no ID collisions with the other routines', () {
+      final ptIds =
+          ptDailyBlocks.expand((b) => b.exercises).map((e) => e.id).toSet();
+      final daily30Ids =
+          dailyBlocks.expand((b) => b.exercises).map((e) => e.id).toSet();
+      final hlrIds = hipLumbarResetBlocks
+          .expand((b) => b.exercises)
+          .map((e) => e.id)
+          .toSet();
+      expect(ptIds.intersection(daily30Ids), isEmpty);
+      expect(ptIds.intersection(hlrIds), isEmpty);
     });
   });
 

@@ -18,10 +18,13 @@ class Routine {
 
 const daily30RoutineId = 'daily30';
 const hipLumbarResetRoutineId = 'hipLumbarReset';
+const ptDailyRoutineId = 'ptDaily';
 
-/// Hip & Lumbar Reset is the new default — it's what Julio is currently
-/// working through. Daily 30 stays available as an alternate.
-const defaultRoutineId = hipLumbarResetRoutineId;
+/// Daily PT is the default — two exercises a physical therapist assigned to do
+/// every day (2026-06-25). The fuller routines (Hip & Lumbar Reset, Daily 30)
+/// stay available in the picker but no longer gate the daily calendar; they're
+/// parked as optional until manually selected.
+const defaultRoutineId = ptDailyRoutineId;
 
 const dailyBlocks = <ExerciseBlock>[
   ExerciseBlock(
@@ -897,7 +900,47 @@ const hipLumbarResetProgram = Program(
 /// strengthen-W1 → cool-down).
 final hipLumbarResetBlocks = hipLumbarResetProgram.blocksForWeek(1);
 
+/// Daily physical-therapy pair (assigned 2026-06-25). Two exercises to do
+/// every day. Prefixed `pt-` to keep completion data isolated from the other
+/// routines, mirroring the `hlr-` convention.
+const ptDailyBlocks = <ExerciseBlock>[
+  ExerciseBlock(
+    id: 'pt-block0',
+    title: 'Daily PT',
+    duration: '~10 min',
+    exercises: [
+      Exercise(
+        id: 'pt-90-90-hip-lift',
+        name: '90/90 Hip Lift',
+        duration: '5 reps · hold 5 breaths',
+        description:
+            'Lie on your back with feet flat on a wall (or up on a chair seat), hips and knees bent to 90°. Exhale fully, press down through the heels, and tilt the pelvis up — peeling the tailbone slightly off the floor so the lower back flattens. Hold that position and take 5 slow breaths through the nose, then relax all the way down. That is one rep.',
+        cue:
+            'The lift comes from the hamstrings and a posterior pelvic tilt — not from arching or jamming the low back into the floor. Keep the glutes and back relaxed; this repositions the pelvis, it is not a glute bridge. 5 reps, 5 breaths each.',
+        videoUrl: 'https://www.youtube.com/watch?v=i8ClGERGh4o',
+      ),
+      Exercise(
+        id: 'pt-kneeling-hip-flexor',
+        name: 'Kneeling Hip-Flexor / Quad Stretch',
+        duration: '30 sec hold · 5 each side',
+        timer:
+            TimerSpec(settingKey: 'pt-kneeling-hip-flexor', defaultSeconds: 30),
+        description:
+            'Half-kneeling: one knee down, the other foot forward and flat. Tuck the pelvis under into a posterior pelvic tilt until you feel the front of the down-leg hip lengthen, then shift your weight gently forward. To add the quad, reach back and pull the down-leg foot toward your glute (or rest it on a couch behind you). Hold 30 seconds, 5 holds per side.',
+        cue:
+            'The posterior pelvic tilt is the whole exercise — skip it and you just arch the low back instead of stretching the hip flexor. Ribs down, squeeze the glute of the down leg.',
+        videoUrl: 'https://www.youtube.com/watch?v=vp2oIc890eU',
+      ),
+    ],
+  ),
+];
+
 const routines = <Routine>[
+  Routine(
+    id: ptDailyRoutineId,
+    title: 'Daily PT',
+    blocks: ptDailyBlocks,
+  ),
   Routine(
     id: hipLumbarResetRoutineId,
     title: 'Hip & Lumbar Reset',

@@ -99,11 +99,10 @@ void main() {
       expect(find.text('0/$total done'), findsOneWidget);
     });
 
-    testWidgets('defaults to Hip & Lumbar Reset when no routine seeded',
-        (tester) async {
+    testWidgets('defaults to Daily PT when no routine seeded', (tester) async {
       await setup(tester);
       await pumpScreen(tester, const TodayScreen(), settle: true);
-      expect(find.text('Hip & Lumbar Reset'), findsOneWidget);
+      expect(find.text('Daily PT'), findsOneWidget);
     });
   });
 

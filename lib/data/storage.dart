@@ -19,6 +19,7 @@ const _darkModeKey = 'flexit_dark_mode';
 const _routineKey = 'flexit_routine';
 const _programStartPrefix = 'flexit_program_start_';
 const _migrationPerSideKey = 'flexit_migration_per_side_v1';
+const _migrationDefaultRoutinePtKey = 'flexit_migration_default_routine_pt_v1';
 
 /// Which single measurement the calendar should render. The order is also the
 /// swipe order (right = next, left = previous).
@@ -411,6 +412,19 @@ Future<void> setActiveRoutineId(String id) async {
   assert(routines.any((r) => r.id == id), 'unknown routine: $id');
   final prefs = await SharedPreferences.getInstance();
   await prefs.setString(_routineKey, id);
+}
+
+/// One-shot: the daily default became the two physical-therapy exercises
+/// (2026-06-25). Existing installs may have `flexit_routine` persisted to the
+/// old default (Hip & Lumbar Reset) or to a routine picked earlier, so simply
+/// changing [defaultRoutineId] would not switch them over. Flip the active
+/// routine to the PT daily once. The old routines stay in the picker, so the
+/// user can switch back at any time — this only runs the single time.
+Future<void> migrateDefaultRoutinePtV1() async {
+  final prefs = await SharedPreferences.getInstance();
+  if (prefs.getBool(_migrationDefaultRoutinePtKey) == true) return;
+  await prefs.setString(_routineKey, ptDailyRoutineId);
+  await prefs.setBool(_migrationDefaultRoutinePtKey, true);
 }
 
 /// Program start date for a routine. If missing, returns null (caller

@@ -472,8 +472,8 @@ void main() {
   });
 
   group('active routine', () {
-    test('defaults to Hip & Lumbar Reset', () async {
-      expect(await getActiveRoutineId(), hipLumbarResetRoutineId);
+    test('defaults to Daily PT', () async {
+      expect(await getActiveRoutineId(), ptDailyRoutineId);
     });
 
     test('persists when switched to Daily 30', () async {
@@ -697,6 +697,32 @@ void main() {
       await migrateCompletionPerSideV1();
       final set = await getCompletedExercises('2026-05-26');
       expect(set, {'hlr-single-knee-chest'});
+    });
+  });
+
+  group('migrateDefaultRoutinePtV1', () {
+    test('switches an unset routine to Daily PT', () async {
+      SharedPreferences.setMockInitialValues({});
+      await migrateDefaultRoutinePtV1();
+      expect(await getActiveRoutineId(), ptDailyRoutineId);
+    });
+
+    test('switches an existing old-default routine to Daily PT', () async {
+      SharedPreferences.setMockInitialValues({
+        'flexit_routine': hipLumbarResetRoutineId,
+      });
+      await migrateDefaultRoutinePtV1();
+      expect(await getActiveRoutineId(), ptDailyRoutineId);
+    });
+
+    test('runs once — a later manual switch survives a second call', () async {
+      SharedPreferences.setMockInitialValues({});
+      await migrateDefaultRoutinePtV1();
+      // User then picks Hip & Lumbar Reset manually.
+      await setActiveRoutineId(hipLumbarResetRoutineId);
+      // A later cold start must not force them back to Daily PT.
+      await migrateDefaultRoutinePtV1();
+      expect(await getActiveRoutineId(), hipLumbarResetRoutineId);
     });
   });
 

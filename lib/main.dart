@@ -21,6 +21,8 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // One-shot data migration for the per-side atomic ID format change.
   await migrateCompletionPerSideV1();
+  // One-shot: switch existing installs to the new Daily PT default routine.
+  await migrateDefaultRoutinePtV1();
   // Append-only daily backup. If today's snapshot already exists on disk we
   // leave it alone — past backups are immutable. Otherwise write the current
   // SharedPreferences state to a new file. Runs once on every cold start.
