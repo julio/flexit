@@ -1325,11 +1325,15 @@ class _PRatingCard extends StatelessWidget {
                 ),
               ),
               if (value != null)
-                Text(
-                  _labels[value]!,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
+                Flexible(
+                  child: Text(
+                    _labels[value]!,
+                    textAlign: TextAlign.end,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ),
             ],
@@ -1565,11 +1569,15 @@ class _BackPainCard extends StatelessWidget {
                 ),
               ),
               if (value != null)
-                Text(
-                  '${value!} · ${_labels[value]!}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
+                Flexible(
+                  child: Text(
+                    '${value!} · ${_labels[value]!}',
+                    textAlign: TextAlign.end,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ),
             ],
