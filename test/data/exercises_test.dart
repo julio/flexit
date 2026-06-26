@@ -183,23 +183,32 @@ void main() {
       }
     });
 
-    test('90/90 hip lift is a single untimed checkbox', () {
+    test('90/90 hip lift is 5 timed reps (one timer button per rep)', () {
       final lift = ptDailyBlocks
           .expand((b) => b.exercises)
           .firstWhere((e) => e.id == 'pt-90-90-hip-lift');
-      expect(lift.timer, isNull);
-      expect(lift.parsedDurationSeconds, isNull);
-      expect(lift.atomicIds, ['pt-90-90-hip-lift']);
+      expect(lift.sets, 5);
+      expect(lift.timer!.defaultSeconds, 40);
+      expect(lift.sidesPerSet, 1);
+      expect(lift.atomicIds, [
+        'pt-90-90-hip-lift:1',
+        'pt-90-90-hip-lift:2',
+        'pt-90-90-hip-lift:3',
+        'pt-90-90-hip-lift:4',
+        'pt-90-90-hip-lift:5',
+      ]);
     });
 
-    test('kneeling stretch is a 30s-timed per-side hold (L/R checkboxes)', () {
+    test('kneeling stretch is 5 timed holds per side (10 timer buttons)', () {
       final stretch = ptDailyBlocks
           .expand((b) => b.exercises)
           .firstWhere((e) => e.id == 'pt-kneeling-hip-flexor');
+      expect(stretch.sets, 5);
       expect(stretch.timer!.defaultSeconds, 30);
       expect(stretch.sidesPerSet, 2);
-      expect(stretch.atomicIds,
-          ['pt-kneeling-hip-flexor:L', 'pt-kneeling-hip-flexor:R']);
+      expect(stretch.atomicIds.length, 10);
+      expect(stretch.atomicIds.first, 'pt-kneeling-hip-flexor:1:L');
+      expect(stretch.atomicIds.last, 'pt-kneeling-hip-flexor:5:R');
     });
 
     test('no ID collisions with the other routines', () {
