@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -156,6 +157,32 @@ void main() {
           DateTime(2026, 6, 1));
     });
 
+    testWidgets('picking a new date persists it and refreshes the subtitle',
+        (tester) async {
+      h = await installTestHarness(prefs: {
+        'flexit_routine': hipLumbarResetRoutineId,
+        'flexit_program_start_$hipLumbarResetRoutineId': '2026-06-01',
+      });
+      await pumpScreen(tester, const SettingsScreen(), settle: true);
+
+      await tester.tap(find.text('Program start'));
+      await tester.pumpAndSettle();
+      expect(find.text('Program start date'), findsOneWidget);
+
+      // Pick a different day in the same month/year (June 2026). Tapping the
+      // "15" grid cell selects Jun 15, then OK confirms -> setProgramStartDate
+      // + _load run (lines 88-90).
+      await tester.tap(find.text('15'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+
+      expect(await getProgramStartDate(hipLumbarResetRoutineId),
+          DateTime(2026, 6, 15));
+      // Subtitle refreshed to the new date.
+      expect(find.textContaining('Jun 15, 2026'), findsOneWidget);
+    });
+
     testWidgets('not shown for Daily 30 (no program)', (tester) async {
       h = await installTestHarness(prefs: {'flexit_routine': daily30RoutineId});
       await pumpScreen(tester, const SettingsScreen(), settle: true);
@@ -289,6 +316,65 @@ void main() {
 
       expect(find.text('Clipboard is empty.'), findsOneWidget);
     });
+
+    testWidgets('valid JSON payload imports keys and reports the count',
+        (tester) async {
+      h = await installTestHarness(prefs: {'flexit_routine': daily30RoutineId});
+
+      // Build a real export payload from the app's own exporter, then point the
+      // clipboard fake at it so _importFromClipboard hits the success path
+      // (lines 245-254): importAllJson + the "Restored N keys" snackbar + _load.
+      final payload = await exportAllJson();
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      messenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'Clipboard.getData') {
+            return <String, dynamic>{'text': payload};
+          }
+          return null;
+        },
+      );
+
+      await pumpScreen(tester, const SettingsScreen(), settle: true);
+
+      await tester.ensureVisible(find.text('Restore from clipboard'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Restore from clipboard'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('keys. Switch tabs to refresh.'),
+          findsOneWidget);
+    });
+
+    testWidgets('malformed JSON payload reports an import failure',
+        (tester) async {
+      h = await installTestHarness(prefs: {'flexit_routine': daily30RoutineId});
+
+      // Point the clipboard at junk that isn't valid JSON -> importAllJson
+      // throws -> the catch branch fires (lines 255-258).
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      messenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'Clipboard.getData') {
+            return <String, dynamic>{'text': 'not json at all {{{'};
+          }
+          return null;
+        },
+      );
+
+      await pumpScreen(tester, const SettingsScreen(), settle: true);
+
+      await tester.ensureVisible(find.text('Restore from clipboard'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Restore from clipboard'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Import failed:'), findsOneWidget);
+    });
   });
 
   group('Daily backups bottom sheet', () {
@@ -309,15 +395,138 @@ void main() {
       expect(find.textContaining('No backups yet'), findsOneWidget);
     });
 
-    // NOTE: the file-backed flows of this sheet (list an existing backup, then
-    // Cancel or confirm Restore) are intentionally NOT driven through the UI.
-    // Tapping a backup entry pops the sheet and chains into showDialog →
-    // (on Restore) restoreFromBackup's real filesystem I/O. Inside a
-    // testWidgets body that runs on the fake-async clock, even with runAsync
-    // wrapping the taps the pop+dialog+I/O sequence does not settle and hangs.
-    // The actual behavior (listBackups + restoreFromBackup) is covered by the
-    // plain `test()`s in the "Daily backup file I/O (data module)" group
-    // below, which run in real async with no deadlock.
+    testWidgets('with a backup present lists it and a Restore confirm reapplies',
+        (tester) async {
+      h = await installTestHarness(prefs: {
+        'flexit_routine': daily30RoutineId,
+        'flexit_p_2026-06-01': 2,
+      });
+
+      // Write one real backup on disk, then wipe the captured key so a restore
+      // is observable.
+      late final String backupName;
+      await tester.runAsync(() async {
+        final path = await runDailyBackupIfNeeded(now: DateTime(2026, 6, 14));
+        expect(path, isNotNull);
+        backupName = File(path!).uri.pathSegments.last;
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('flexit_p_2026-06-01');
+      });
+
+      await pumpScreen(tester, const SettingsScreen(), settle: true);
+
+      // Open the sheet. listBackups does real I/O -> tap inside runAsync.
+      await tester.runAsync(() async {
+        await tester.tap(find.text('Daily backups on device'));
+        await tester.pump();
+      });
+      await tester.pumpAndSettle();
+
+      // The backup row renders (ListView.builder branch, lines 124-209): name +
+      // KB size.
+      expect(find.text(backupName), findsOneWidget);
+      expect(find.textContaining('KB'), findsWidgets);
+
+      // Tap the row -> sheet pops, confirm dialog appears.
+      await tester.runAsync(() async {
+        await tester.tap(find.text(backupName));
+        await tester.pump();
+      });
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Restore from $backupName?'), findsOneWidget);
+
+      // Confirm Restore -> restoreFromBackup runs (real I/O) -> success snackbar
+      // (lines 168-179) and the wiped key is reapplied. The onTap callback does
+      // real filesystem I/O (restoreFromBackup) then awaits _load (more I/O), so
+      // pump repeatedly inside runAsync to let those real futures resolve.
+      await tester.runAsync(() async {
+        await tester.tap(find.text('Restore'));
+        // Let the real-I/O restore future + _load resolve, then flush a frame
+        // so the snackbar is mounted.
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+        await tester.pump();
+      });
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Switch tabs to refresh.'), findsOneWidget);
+      expect(await getPRating('2026-06-01'), 2);
+    });
+
+    testWidgets('cancelling the restore dialog makes no change', (tester) async {
+      h = await installTestHarness(prefs: {
+        'flexit_routine': daily30RoutineId,
+        'flexit_p_2026-06-01': 2,
+      });
+
+      late final String backupName;
+      await tester.runAsync(() async {
+        final path = await runDailyBackupIfNeeded(now: DateTime(2026, 6, 15));
+        backupName = File(path!).uri.pathSegments.last;
+      });
+
+      await pumpScreen(tester, const SettingsScreen(), settle: true);
+
+      await tester.runAsync(() async {
+        await tester.tap(find.text('Daily backups on device'));
+        await tester.pump();
+      });
+      await tester.pumpAndSettle();
+      expect(find.text(backupName), findsOneWidget);
+
+      await tester.runAsync(() async {
+        await tester.tap(find.text(backupName));
+        await tester.pump();
+      });
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Restore from $backupName?'), findsOneWidget);
+
+      // Cancel -> confirmed == false, the early `return` (line 168) fires; no
+      // snackbar, value untouched.
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Switch tabs to refresh.'), findsNothing);
+      expect(await getPRating('2026-06-01'), 2);
+    });
+
+    testWidgets('a corrupt backup file surfaces a restore-failed snackbar',
+        (tester) async {
+      h = await installTestHarness(prefs: {'flexit_routine': daily30RoutineId});
+
+      // Hand-write a backup file with junk contents so restoreFromBackup throws
+      // and the catch branch (lines 180-183) runs.
+      late final String backupName;
+      await tester.runAsync(() async {
+        final dir = Directory('${h.docsDir.path}/flexit_backups');
+        dir.createSync(recursive: true);
+        final f = File('${dir.path}/flexit_2026-06-16.json');
+        f.writeAsStringSync('this is not valid json {{{');
+        backupName = f.uri.pathSegments.last;
+      });
+
+      await pumpScreen(tester, const SettingsScreen(), settle: true);
+
+      await tester.runAsync(() async {
+        await tester.tap(find.text('Daily backups on device'));
+        await tester.pump();
+      });
+      await tester.pumpAndSettle();
+      expect(find.text(backupName), findsOneWidget);
+
+      await tester.runAsync(() async {
+        await tester.tap(find.text(backupName));
+        await tester.pump();
+      });
+      await tester.pumpAndSettle();
+
+      await tester.runAsync(() async {
+        await tester.tap(find.text('Restore'));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+        await tester.pump();
+      });
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Restore failed:'), findsOneWidget);
+    });
   });
 
   // Backup file I/O asserted directly against the data module (real async,

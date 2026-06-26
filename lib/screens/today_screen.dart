@@ -14,6 +14,39 @@ import '../services/notifications.dart';
 import '../theme.dart';
 import 'settings_screen.dart';
 
+/// Injectable wall clock. Production uses [DateTime.now]; tests override it to
+/// simulate a date rollover between a load and a later app-resume (so the
+/// resume-time "did the day change?" reload path is exercisable).
+@visibleForTesting
+DateTime Function() todayClock = DateTime.now;
+
+/// Reconciles the stored daily [Session] after a completion toggle: writes a
+/// session when the day just became fully complete, removes it when a
+/// previously-complete day no longer is. Returns true when the caller should
+/// reload its state. Extracted from the widget so the un-complete branch — which
+/// the UI can't reach once the completion banner replaces the toggle controls —
+/// stays directly testable.
+@visibleForTesting
+Future<bool> reconcileDailyCompletion({
+  required bool allDone,
+  required bool wasDone,
+  required DateTime now,
+}) async {
+  if (allDone && !wasDone) {
+    await saveSession(Session(
+      date: formatDate(now),
+      completedAt: now.toUtc().toIso8601String(),
+      type: 'daily',
+    ));
+    return true;
+  }
+  if (!allDone && wasDone) {
+    await removeSession(formatDate(now));
+    return true;
+  }
+  return false;
+}
+
 class TodayScreen extends StatefulWidget {
   const TodayScreen({super.key});
 
@@ -68,16 +101,16 @@ class _TodayScreenState extends State<TodayScreen>
     runDailyBackupIfNeeded();
     // If the date changed while backgrounded, blow away the stale state and
     // reload — otherwise yesterday's completion banner sticks around.
-    final todayKey = formatDate(DateTime.now());
+    final todayKey = formatDate(todayClock());
     if (todayKey != _loadedForDate) {
       _loadState();
     }
   }
 
   Future<void> _loadState() async {
-    final today = formatDate(DateTime.now());
+    final today = formatDate(todayClock());
     final yesterday =
-        formatDate(DateTime.now().subtract(const Duration(days: 1)));
+        formatDate(todayClock().subtract(const Duration(days: 1)));
     final done = await isTodayComplete();
     final sessions = await getSessions();
     final completed = await getTodayCompletedExercises();
@@ -241,22 +274,14 @@ class _TodayScreenState extends State<TodayScreen>
         .toSet();
     final allDone = allIds.difference(updated).isEmpty;
 
-    if (allDone && !_done) {
-      final now = DateTime.now();
-      final today = formatDate(now);
-      // Stored in UTC so the timestamp reads correctly in any timezone.
-      await saveSession(Session(
-        date: today,
-        completedAt: now.toUtc().toIso8601String(),
-        type: 'daily',
-      ));
-      HapticFeedback.heavyImpact();
-      await _loadState();
-    } else if (!allDone && _done) {
-      // Un-complete if user unchecks an exercise
-      await removeSession(formatDate(DateTime.now()));
-      await _loadState();
-    }
+    // Stored in UTC so the timestamp reads correctly in any timezone.
+    final changed = await reconcileDailyCompletion(
+      allDone: allDone,
+      wasDone: _done,
+      now: todayClock(),
+    );
+    if (allDone && !_done) HapticFeedback.heavyImpact();
+    if (changed) await _loadState();
   }
 
   @override

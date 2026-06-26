@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flexit/main.dart';
+import 'package:flexit/main.dart' as app show main;
+import 'package:flexit/data/storage.dart';
+import 'package:flexit/data/exercises.dart';
 import 'package:flexit/screens/today_screen.dart';
 import 'package:flexit/screens/calendar_screen.dart';
 import 'package:flexit/theme.dart';
@@ -18,6 +21,27 @@ void main() {
     h = await installTestHarness();
   });
   tearDown(() => h.dispose());
+
+  group('main() entry point', () {
+    testWidgets('boots the real app: migrations, theme, notifications, runApp',
+        (tester) async {
+      // Run the real entry point. The awaited startup work (migrations, daily
+      // backup, getDarkMode, notifications init) needs real async, so it runs
+      // inside runAsync against the harness's faked plugin channels; the final
+      // runApp(FlexItApp()) is then pumped/settled normally.
+      await tester.runAsync(() async {
+        app.main(); // async void — fire it, then let its awaits drain
+        await Future<void>.delayed(const Duration(milliseconds: 400));
+      });
+      await tester.pumpAndSettle();
+      drainBenignOverflow(tester);
+
+      expect(find.byType(FlexItApp), findsOneWidget);
+      expect(find.byType(HomeShell), findsOneWidget);
+      // main()'s migrateDefaultRoutinePtV1 flips the active routine to Daily PT.
+      expect(await getActiveRoutineId(), ptDailyRoutineId);
+    });
+  });
 
   group('bumpDataChanged', () {
     test('increments the dataChangedCounter notifier', () {
@@ -98,6 +122,26 @@ void main() {
       await tester.pumpAndSettle();
       final stack = tester.widget<IndexedStack>(find.byType(IndexedStack));
       expect(stack.index, 0);
+    });
+
+    testWidgets('a data-change bump force-reloads the Calendar', (tester) async {
+      // HomeShell registers _forceCalendarReload on dataChangedCounter in
+      // initState. Bumping the counter while mounted fires that listener,
+      // which reaches into the Calendar's GlobalKey state and calls reload().
+      // We assert it runs without throwing (the Calendar is mounted via the
+      // IndexedStack, so currentState is non-null and reload() executes).
+      await pumpScreen(tester, const HomeShell(), settle: true);
+      final before = dataChangedCounter.value;
+      bumpDataChanged();
+      await tester.pump();
+      // Let any reload-triggered async settle.
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.pumpAndSettle();
+      drainBenignOverflow(tester);
+      expect(dataChangedCounter.value, before + 1);
+      expect(tester.takeException(), isNull);
+      // Shell is still alive and on the Today tab.
+      expect(find.byType(HomeShell), findsOneWidget);
     });
   });
 }

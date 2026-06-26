@@ -456,6 +456,19 @@ void main() {
       expect(calendarMeasurements,
           ['completion', 'p', 'drinks', 'backpain', 'weight']);
     });
+
+    test('rejects an unknown measurement via assertion', () async {
+      // The assert's message expression (interpolating $value) only evaluates
+      // when the assertion fails, so an invalid value is required to reach it.
+      expect(
+        () => setCalendarMeasurement('not-a-real-measurement'),
+        throwsA(isA<AssertionError>().having(
+          (e) => e.toString(),
+          'message',
+          contains('unknown calendar measurement: not-a-real-measurement'),
+        )),
+      );
+    });
   });
 
   group('dark mode', () {
@@ -622,6 +635,44 @@ void main() {
       expect(await getPRating('2026-05-30'), 1);
       // The newer back-pain entry is untouched — import is additive.
       expect(await getBackPainRating('2026-05-30'), 3);
+    });
+
+    test('exports a double-typed flexit_ key with type "double"', () async {
+      // No production setter writes a double, but export must still classify
+      // a double-valued key correctly (the double branch in exportAllJson).
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setDouble('flexit_some_double', 1.5);
+
+      final json = await exportAllJson();
+      expect(json, contains('flexit_some_double'));
+      expect(json, contains('"type": "double"'));
+      expect(json, contains('"value": 1.5'));
+    });
+
+    test('imports a double-typed entry back into prefs', () async {
+      // Hand-craft a snapshot carrying a double so importAllJson exercises its
+      // setDouble branch.
+      const snapshot = '''
+{
+  "entries": {
+    "flexit_some_double": { "type": "double", "value": 2.25 }
+  }
+}''';
+      final count = await importAllJson(snapshot);
+      expect(count, 1);
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getDouble('flexit_some_double'), 2.25);
+    });
+
+    test('round-trips a double through export then import', () async {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setDouble('flexit_dbl', 3.75);
+      final json = await exportAllJson();
+      SharedPreferences.setMockInitialValues({});
+      final count = await importAllJson(json);
+      expect(count, 1);
+      final restored = await SharedPreferences.getInstance();
+      expect(restored.getDouble('flexit_dbl'), 3.75);
     });
   });
 

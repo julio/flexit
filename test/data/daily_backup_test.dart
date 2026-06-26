@@ -82,6 +82,19 @@ void main() {
     ]);
   });
 
+  test('defaults to DateTime.now() when no date is passed', () async {
+    // Calling with no `now` exercises the `now ?? DateTime.now()` fallback.
+    // Whatever today is, the written file must carry today's calendar date.
+    final path = await runDailyBackupIfNeeded();
+    expect(path, isNotNull);
+    final now = DateTime.now();
+    final y = now.year.toString().padLeft(4, '0');
+    final m = now.month.toString().padLeft(2, '0');
+    final d = now.day.toString().padLeft(2, '0');
+    expect(path, endsWith('backup-$y-$m-$d.json'));
+    expect(File(path!).existsSync(), isTrue);
+  });
+
   test('restoreFromBackup re-applies the snapshot', () async {
     final path =
         await runDailyBackupIfNeeded(now: DateTime(2026, 5, 31, 10));

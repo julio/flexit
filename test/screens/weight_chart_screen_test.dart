@@ -141,6 +141,43 @@ void main() {
     });
   });
 
+  group('repaint', () {
+    testWidgets('rebuilding with new data drives the painter to repaint',
+        (tester) async {
+      // First build: kg with the sample set.
+      await pumpScreen(
+        tester,
+        const WeightChartScreen(weights: sampleGrams, unit: 'kg'),
+      );
+      expect(find.byType(CustomPaint), findsWidgets);
+
+      // Rebuild the SAME widget position with a different dataset. The
+      // framework reuses the CustomPaint element and calls
+      // _LineChartPainter.shouldRepaint(oldPainter); changed points -> true.
+      const moreData = <String, int>{
+        '2026-06-01': 75000,
+        '2026-06-02': 74800,
+        '2026-06-03': 75200,
+        '2026-06-04': 76000,
+      };
+      await pumpScreen(
+        tester,
+        const WeightChartScreen(weights: moreData, unit: 'kg'),
+      );
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+
+      // Rebuild again switching only the unit (points equal, unit differs ->
+      // shouldRepaint returns true through the unit branch).
+      await pumpScreen(
+        tester,
+        const WeightChartScreen(weights: moreData, unit: 'lb'),
+      );
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+    });
+  });
+
   group('edge cases', () {
     testWidgets('empty map shows placeholder and no stats/chart crash',
         (tester) async {
