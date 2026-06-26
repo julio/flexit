@@ -213,9 +213,47 @@ class _TodayScreenState extends State<TodayScreen>
     if (mounted) setState(() => _weightUnit = unit);
   }
 
-  void _toggleWorkoutExpanded() {
-    if (_done) return;
+  Future<void> _toggleWorkoutExpanded() async {
+    if (_done) {
+      // Day is complete — the banner replaces the toggle controls. Let the
+      // user reopen it (removes today's session, brings the exercises back).
+      final reopen = await _confirmReopenDay();
+      if (reopen != true) return;
+      await removeSession(formatDate(todayClock()));
+      bumpDataChanged();
+      if (mounted) setState(() => _workoutExpanded = true);
+      await _loadState();
+      return;
+    }
     setState(() => _workoutExpanded = !_workoutExpanded);
+  }
+
+  Future<bool?> _confirmReopenDay() {
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.card,
+        title: Text('Reopen today?',
+            style: TextStyle(color: AppColors.text, fontSize: 17)),
+        content: Text(
+          "Today is marked complete. Reopen it to change what you've done?",
+          style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text('Cancel',
+                style: TextStyle(color: AppColors.textSecondary)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Reopen',
+                style: TextStyle(
+                    color: AppColors.missed, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _openSettings() async {
@@ -945,29 +983,34 @@ class _WorkoutHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     if (done) {
       // Workout complete: a single tight banner replaces the entire section.
-      return Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: AppColors.successDim,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-              color: AppColors.success.withValues(alpha: 0.3)),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.check_circle,
-                color: AppColors.success, size: 20),
-            const SizedBox(width: 8),
-            Text(
-              'All done for today',
-              style: TextStyle(
-                color: AppColors.success,
-                fontWeight: FontWeight.w800,
-                fontSize: 16,
+      // Tappable so the user can reopen the day (undo the completion).
+      return GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: AppColors.successDim,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+                color: AppColors.success.withValues(alpha: 0.3)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.check_circle,
+                  color: AppColors.success, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'All done for today',
+                style: TextStyle(
+                  color: AppColors.success,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       );
     }

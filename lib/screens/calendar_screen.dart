@@ -1401,16 +1401,27 @@ class _CompactWeightState extends State<_CompactWeight> {
     return v.toStringAsFixed(1);
   }
 
+  // The last value handed to onChange. Guards against a duplicate commit:
+  // dismissing the sheet unfocuses the field (committing via the focus
+  // listener while still mounted) and then disposes it (committing again).
+  // Without this, the second commit's async onChange runs setState on the
+  // already-popped sheet. Deduping makes the dispose-time commit a no-op.
+  int? _lastCommittedGrams;
+  bool _committed = false;
+
   void _commit(String raw) {
     final trimmed = raw.trim();
+    int? grams;
     if (trimmed.isEmpty) {
-      widget.onChange(null);
-      return;
+      grams = null;
+    } else {
+      final parsed = double.tryParse(trimmed.replaceAll(',', '.'));
+      if (parsed == null || parsed <= 0) return;
+      grams = widget.unit == 'kg' ? kgToGrams(parsed) : lbToGrams(parsed);
     }
-    final parsed = double.tryParse(trimmed.replaceAll(',', '.'));
-    if (parsed == null || parsed <= 0) return;
-    final grams =
-        widget.unit == 'kg' ? kgToGrams(parsed) : lbToGrams(parsed);
+    if (_committed && grams == _lastCommittedGrams) return;
+    _committed = true;
+    _lastCommittedGrams = grams;
     widget.onChange(grams);
   }
 

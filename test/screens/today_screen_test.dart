@@ -359,6 +359,55 @@ void main() {
       expect(find.text('All done for today'), findsOneWidget);
       expect(await isTodayComplete(), isTrue);
     });
+
+    testWidgets('tapping the done banner reopens the day after confirm',
+        (tester) async {
+      final allIds = _atomicIdsFor(_daily30.blocks);
+      final today = formatDate(DateTime.now());
+      await setup(tester, prefs: {
+        'flexit_routine': daily30RoutineId,
+        'flexit_exercises_$today': allIds,
+        'flexit_sessions':
+            '[{"date":"$today","completedAt":"2026-06-23T10:00:00.000Z","type":"daily"}]',
+      });
+      await pumpScreen(tester, const TodayScreen(), settle: true);
+      expect(find.text('All done for today'), findsOneWidget);
+
+      // Tap the banner → confirm dialog → Reopen.
+      await tester.tap(find.text('All done for today'));
+      await tester.pumpAndSettle();
+      expect(find.text('Reopen today?'), findsOneWidget);
+      await tester.tap(find.text('Reopen'));
+      await tester.pumpAndSettle();
+      await settlePrefs(tester);
+
+      // Session removed, day no longer complete, banner gone.
+      expect(await isTodayComplete(), isFalse);
+      expect(find.text('All done for today'), findsNothing);
+    });
+
+    testWidgets('cancelling the reopen dialog keeps the day complete',
+        (tester) async {
+      final allIds = _atomicIdsFor(_daily30.blocks);
+      final today = formatDate(DateTime.now());
+      await setup(tester, prefs: {
+        'flexit_routine': daily30RoutineId,
+        'flexit_exercises_$today': allIds,
+        'flexit_sessions':
+            '[{"date":"$today","completedAt":"2026-06-23T10:00:00.000Z","type":"daily"}]',
+      });
+      await pumpScreen(tester, const TodayScreen(), settle: true);
+
+      await tester.tap(find.text('All done for today'));
+      await tester.pumpAndSettle();
+      expect(find.text('Reopen today?'), findsOneWidget);
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      await settlePrefs(tester);
+
+      expect(await isTodayComplete(), isTrue);
+      expect(find.text('All done for today'), findsOneWidget);
+    });
   });
 
   group('undo dialog', () {
