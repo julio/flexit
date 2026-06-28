@@ -166,10 +166,28 @@ void main() {
       expect(pt.blocks.length, 1);
     });
 
-    test('holds exactly the two PT exercises', () {
+    test('holds the four PT exercises in order', () {
       final ids =
           ptDailyBlocks.expand((b) => b.exercises).map((e) => e.id).toList();
-      expect(ids, ['pt-90-90-hip-lift', 'pt-kneeling-hip-flexor']);
+      expect(ids, [
+        'pt-90-90-hip-lift',
+        'pt-kneeling-hip-flexor',
+        'pt-glute-bridge',
+        'pt-rdl',
+      ]);
+    });
+
+    test('the added strengthening moves are 3-set, rep-based, with videos', () {
+      final byId = {
+        for (final e in ptDailyBlocks.expand((b) => b.exercises)) e.id: e
+      };
+      for (final id in ['pt-glute-bridge', 'pt-rdl']) {
+        final e = byId[id]!;
+        expect(e.sets, 3, reason: '$id should be 3 sets');
+        expect(e.timer, isNull, reason: '$id is rep-based, not timed');
+        expect(e.atomicIds.length, 3, reason: '$id renders one check per set');
+        expect(e.videoUrl, startsWith('https://www.youtube.com/'));
+      }
     });
 
     test('every exercise has required fields, a pt- prefix, and a video', () {

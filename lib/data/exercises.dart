@@ -935,6 +935,28 @@ const ptDailyBlocks = <ExerciseBlock>[
             'The posterior pelvic tilt is the whole exercise — skip it and you just arch the low back instead of stretching the hip flexor. Ribs down, squeeze the glute of the down leg.',
         videoUrl: 'https://www.youtube.com/watch?v=vp2oIc890eU',
       ),
+      Exercise(
+        id: 'pt-glute-bridge',
+        name: 'Single-Leg Glute Bridge',
+        duration: '3 × 8 each side',
+        sets: 3,
+        description:
+            'Lie on your back, both knees bent, feet flat. Extend one leg straight out, then drive through the heel of the planted foot to lift your hips until knee, hip, and shoulder form a straight line. Squeeze the glute hard at the top, lower slowly. Keep the hips level — do not let the raised-leg side drop.',
+        cue:
+            'Drive through the heel, not the toes, to bias glutes and hamstrings over the quad. Hips stay square and level. To progress once 3×8 is easy, rest a dumbbell on your hips (start with the 25).',
+        videoUrl: 'https://www.youtube.com/watch?v=VUl8R0kn6v4',
+      ),
+      Exercise(
+        id: 'pt-rdl',
+        name: 'Dumbbell Romanian Deadlift',
+        duration: '3 × 8 reps',
+        sets: 3,
+        description:
+            'A dumbbell in each hand, feet hip-width, knees soft. Push your hips straight back and let the dumbbells slide down the front of your thighs until you feel the hamstrings load (around mid-shin), then drive the hips forward to stand tall. It is a hinge, not a squat.',
+        cue:
+            'Spine stays long the whole time — a rounding back is what aggravates the lumbar facets, so stop the descent the moment your back wants to round. Start with the 25s; move to the 30s when 3×8 is easy with a flat back. The 50s are a later goal, not a starting weight.',
+        videoUrl: 'https://www.youtube.com/watch?v=aa57T45iFSE',
+      ),
     ],
   ),
 ];
