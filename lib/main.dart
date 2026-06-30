@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'data/cloud_sync.dart';
 import 'data/daily_backup.dart';
 import 'data/storage.dart';
 import 'screens/today_screen.dart';
@@ -15,7 +16,11 @@ final ValueNotifier<bool> themeIsDark = ValueNotifier<bool>(true);
 /// without depending on the bottom-nav tap to trigger a reload.
 final ValueNotifier<int> dataChangedCounter = ValueNotifier<int>(0);
 
-void bumpDataChanged() => dataChangedCounter.value++;
+void bumpDataChanged() {
+  dataChangedCounter.value++;
+  // Mirror the change to the cloud (best-effort, fire-and-forget).
+  CloudSync.push();
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,6 +28,11 @@ void main() async {
   await migrateCompletionPerSideV1();
   // One-shot: switch existing installs to the new Daily PT default routine.
   await migrateDefaultRoutinePtV1();
+  // Self-heal: a blank install (fresh or post-wipe) pulls its data back from
+  // the cloud before anything reads local state. Best-effort — offline is fine.
+  await CloudSync.restoreIfLocalEmpty();
+  // Keep the cloud copy current with whatever is local now (merge-on-write).
+  CloudSync.push();
   // Append-only daily backup. If today's snapshot already exists on disk we
   // leave it alone — past backups are immutable. Otherwise write the current
   // SharedPreferences state to a new file. Runs once on every cold start.

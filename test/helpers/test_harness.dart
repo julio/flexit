@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flexit/data/cloud_sync.dart';
 import 'package:url_launcher_platform_interface/link.dart';
 import 'package:url_launcher_platform_interface/url_launcher_platform_interface.dart';
 
@@ -137,6 +138,10 @@ Future<TestHarness> installTestHarness({
 }) async {
   TestWidgetsFlutterBinding.ensureInitialized();
   SharedPreferences.setMockInitialValues(prefs);
+
+  // No widget/unit test should reach the network. Cloud sync stays off here;
+  // cloud_sync_test re-enables it with a mock http client.
+  CloudSync.enabled = false;
 
   final urls = FakeUrlLauncher();
   UrlLauncherPlatform.instance = urls;
