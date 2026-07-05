@@ -4,6 +4,10 @@
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<key>NSHealthShareUsageDescription</key>
+	<string>Flexit reads your walking and running distance from Apple Health to chart it alongside your workout log.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Flexit does not write to Apple Health.</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>

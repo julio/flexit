@@ -14,6 +14,7 @@ const _alcoholPrefix = 'flexit_alc_';
 const _backPainPrefix = 'flexit_bp_';
 const _weightPrefix = 'flexit_weight_'; // stored as integer grams
 const _weightUnitKey = 'flexit_weight_unit'; // 'kg' or 'lb'
+const _distancePrefix = 'flexit_dist_'; // walking+running metres/day, from Health
 const _calendarMeasurementKey = 'flexit_calendar_measurement';
 const _darkModeKey = 'flexit_dark_mode';
 const _routineKey = 'flexit_routine';
@@ -29,7 +30,13 @@ const calendarMeasurements = [
   'drinks',
   'backpain',
   'weight',
+  'distance',
 ];
+
+/// Metres → km. Distance is stored as integer metres (Health's native unit for
+/// DistanceWalkingRunning) and only converted for display.
+const double metresPerKm = 1000.0;
+double metresToKm(int m) => m / metresPerKm;
 
 /// Grams ↔ kg / lb conversions. Storage is always in integer grams so we
 /// never mishandle floating-point precision across reads.
@@ -373,6 +380,32 @@ Future<Map<String, int>> getAllBackPainRatings() async {
     final value = prefs.getInt(key);
     if (value == null) continue;
     result[key.substring(_backPainPrefix.length)] = value;
+  }
+  return result;
+}
+
+/// Walking + running distance for a day, in whole metres. Sourced from Apple
+/// Health (see [HealthSync]); never edited by hand, so there's no setter guard
+/// beyond non-negativity.
+Future<int?> getDistanceMeters(String date) async {
+  final prefs = await SharedPreferences.getInstance();
+  return prefs.getInt('$_distancePrefix$date');
+}
+
+Future<void> setDistanceMeters(String date, int meters) async {
+  assert(meters >= 0, 'distance must be non-negative');
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setInt('$_distancePrefix$date', meters);
+}
+
+Future<Map<String, int>> getAllDistanceMeters() async {
+  final prefs = await SharedPreferences.getInstance();
+  final result = <String, int>{};
+  for (final key in prefs.getKeys()) {
+    if (!key.startsWith(_distancePrefix)) continue;
+    final value = prefs.getInt(key);
+    if (value == null) continue;
+    result[key.substring(_distancePrefix.length)] = value;
   }
   return result;
 }

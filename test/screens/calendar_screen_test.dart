@@ -149,7 +149,7 @@ void main() {
       expect(await getCalendarMeasurement(), 'p');
     });
 
-    testWidgets('tapping prev chevron wraps from completion to weight',
+    testWidgets('tapping prev chevron wraps from completion to distance',
         (tester) async {
       harness = await installTestHarness();
       await pumpScreen(tester, const CalendarScreen(), settle: true);
@@ -158,8 +158,8 @@ void main() {
       await tester.tap(find.byIcon(Icons.chevron_left).first);
       await tester.pump(const Duration(milliseconds: 200));
 
-      expect(find.text('Weight'), findsOneWidget);
-      expect(await getCalendarMeasurement(), 'weight');
+      expect(find.text('Distance'), findsOneWidget);
+      expect(await getCalendarMeasurement(), 'distance');
     });
 
     testWidgets('swiping the pill left advances to the next measurement',
@@ -488,6 +488,27 @@ void main() {
       // Round-trip confirms the seeded rating is what the grid reads.
       expect(await getBackPainRating(d(15)), 8);
     });
+
+    testWidgets('distance measurement renders km labels in the grid',
+        (tester) async {
+      harness = await installTestHarness(prefs: {
+        'flexit_calendar_measurement': 'distance',
+      });
+      await setActiveRoutineId(daily30RoutineId);
+      await saveSession(Session(
+          date: d(1), completedAt: '${d(1)}T12:00:00Z', type: 'daily'));
+      // 5.23 km on the 15th → cell shows "5.2" instead of the day number.
+      await setDistanceMeters(d(15), 5230);
+
+      final key = GlobalKey<CalendarScreenState>();
+      await pumpScreen(tester, CalendarScreen(key: key), settle: true);
+      await seedAndReload(tester, key);
+      await navigateToPastMonth(tester);
+
+      expect(find.text('5.2'), findsOneWidget);
+      // Day 15's number is replaced by the value, so '15' is gone.
+      expect(find.text('15'), findsNothing);
+    });
   });
 
   group('quick-edit long-press sheet', () {
@@ -614,6 +635,38 @@ void main() {
       await tester.pump(const Duration(milliseconds: 200));
       expect(await getWeightGrams(d(15)), isNull);
     });
+
+    testWidgets('long-press with distance shows a read-only readout',
+        (tester) async {
+      harness = await installTestHarness(prefs: {
+        'flexit_calendar_measurement': 'distance',
+      });
+      await setActiveRoutineId(daily30RoutineId);
+      await saveSession(Session(
+          date: d(1), completedAt: '${d(1)}T12:00:00Z', type: 'daily'));
+      await setDistanceMeters(d(14), 8420); // 8.42 km on the 14th
+
+      final key = GlobalKey<CalendarScreenState>();
+      await pumpScreen(tester, CalendarScreen(key: key), settle: true);
+      await seedAndReload(tester, key);
+      await navigateToPastMonth(tester);
+
+      // Day with data → shows the km value. Cell text is "8.4", so long-press
+      // that cell to open the sheet (which shows 2-decimal km).
+      await tester.longPress(find.text('8.4'));
+      await tester.pumpAndSettle();
+      expect(find.text('DISTANCE'), findsWidgets);
+      expect(find.text('8.42 km'), findsOneWidget);
+      // Read-only: no editable field in the sheet.
+      expect(find.byType(TextField), findsNothing);
+
+      // Dismiss, then long-press a day with no distance → "No data" branch.
+      await tester.tapAt(const Offset(10, 10));
+      await tester.pumpAndSettle();
+      await tester.longPress(find.text('16'));
+      await tester.pumpAndSettle();
+      expect(find.text('No data from Apple Health'), findsOneWidget);
+    });
   });
 
   group('measurement cell painting', () {
@@ -672,13 +725,13 @@ void main() {
       await pumpScreen(tester, const CalendarScreen(), settle: true);
 
       // Default is Completion; a rightward fling (positive x velocity) => prev,
-      // which wraps to the last measurement (Weight).
+      // which wraps to the last measurement (Distance).
       await tester.fling(
           find.text('Completion'), const Offset(300, 0), 1000);
       await tester.pump(const Duration(milliseconds: 200));
 
-      expect(find.text('Weight'), findsOneWidget);
-      expect(await getCalendarMeasurement(), 'weight');
+      expect(find.text('Distance'), findsOneWidget);
+      expect(await getCalendarMeasurement(), 'distance');
     });
   });
 

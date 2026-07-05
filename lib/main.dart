@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'data/cloud_sync.dart';
 import 'data/daily_backup.dart';
+import 'data/health_sync.dart';
 import 'data/storage.dart';
 import 'screens/today_screen.dart';
 import 'screens/calendar_screen.dart';
@@ -45,6 +46,12 @@ void main() async {
     AppColors.applyLight();
   }
   await TimerNotifications.instance.init();
+  // Best-effort: pull walking + running distance from Apple Health into local
+  // storage, then refresh the UI and mirror to the cloud. Fire-and-forget so a
+  // slow, denied, or unavailable Health store never delays first paint.
+  HealthSync.syncDistance().then((written) {
+    if (written > 0) bumpDataChanged();
+  });
   runApp(const FlexItApp());
 }
 

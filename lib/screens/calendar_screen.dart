@@ -23,6 +23,7 @@ class CalendarScreenState extends State<CalendarScreen> {
   Map<String, int> _alcoholRatings = {};
   Map<String, int> _backPainRatings = {};
   Map<String, int> _weightGrams = {};
+  Map<String, int> _distanceMeters = {};
   String _weightUnit = 'kg';
   String _measurement = calendarMeasurements.first;
   Routine _routine = routines.first;
@@ -54,6 +55,7 @@ class CalendarScreenState extends State<CalendarScreen> {
     final alcoholRatings = await getAllAlcoholRatings();
     final backPainRatings = await getAllBackPainRatings();
     final weightGrams = await getAllWeightGrams();
+    final distanceMeters = await getAllDistanceMeters();
     final weightUnit = await getWeightUnit();
     final measurement = await getCalendarMeasurement();
     final routineId = await getActiveRoutineId();
@@ -68,6 +70,7 @@ class CalendarScreenState extends State<CalendarScreen> {
         _alcoholRatings = alcoholRatings;
         _backPainRatings = backPainRatings;
         _weightGrams = weightGrams;
+        _distanceMeters = distanceMeters;
         _weightUnit = weightUnit;
         _measurement = measurement;
         _routine = routine;
@@ -225,6 +228,10 @@ class CalendarScreenState extends State<CalendarScreen> {
                     });
                   },
                 );
+                break;
+              case 'distance':
+                // Read-only: distance comes from Apple Health, not hand-edited.
+                body = _CompactDistance(meters: _distanceMeters[dateStr]);
                 break;
               default:
                 body = const SizedBox.shrink();
@@ -669,11 +676,11 @@ class CalendarScreenState extends State<CalendarScreen> {
       // Pick a fill color for the cell based on the active measurement.
       // Every measurement now paints the cell — completion uses the same
       // treatment as p / drinks / back pain so the visual language matches.
-      // Weight has no natural heatmap; we replace the day number with the
-      // weight value as the cell content instead.
+      // Weight and distance have no natural heatmap; we replace the day number
+      // with the value itself (kg / km) as the cell content instead.
       Color? cellFill;
       Gradient? cellGradient;
-      String? weightLabel;
+      String? valueLabel;
       switch (_measurement) {
         case 'completion':
           // Cup-fill: green fills the cell from the bottom up, proportional
@@ -719,8 +726,18 @@ class CalendarScreenState extends State<CalendarScreen> {
           final g = _weightGrams[dateStr];
           if (g != null) {
             final v = _weightUnit == 'kg' ? gramsToKg(g) : gramsToLb(g);
-            weightLabel = v.toStringAsFixed(1);
+            valueLabel = v.toStringAsFixed(1);
             cellFill = AppColors.accent.withValues(alpha: 0.25);
+          }
+          break;
+        case 'distance':
+          // Km walked/run that day, from Apple Health. Fill opacity scales
+          // with distance so a busy day reads darker than a light one.
+          final m = _distanceMeters[dateStr];
+          if (m != null && m > 0) {
+            valueLabel = metresToKm(m).toStringAsFixed(1);
+            final intensity = (m / 10000).clamp(0.15, 0.7);
+            cellFill = AppColors.accent.withValues(alpha: intensity);
           }
           break;
       }
@@ -746,8 +763,8 @@ class CalendarScreenState extends State<CalendarScreen> {
         dayColor = isToday ? AppColors.accent : AppColors.text;
       }
       final boldDay = isToday || cellFill != null || cellGradient != null;
-      final cellText = weightLabel ?? '$day';
-      final cellFontSize = weightLabel != null ? 12.0 : 14.0;
+      final cellText = valueLabel ?? '$day';
+      final cellFontSize = valueLabel != null ? 12.0 : 14.0;
 
       cells.add(
         GestureDetector(
@@ -1196,6 +1213,7 @@ class _MeasurementPill extends StatelessWidget {
     'drinks': 'Drinks',
     'backpain': 'Back pain',
     'weight': 'Weight',
+    'distance': 'Distance',
   };
 
   static const _icons = {
@@ -1204,6 +1222,7 @@ class _MeasurementPill extends StatelessWidget {
     'drinks': Icons.local_bar_outlined,
     'backpain': Icons.healing_outlined,
     'weight': Icons.monitor_weight_outlined,
+    'distance': Icons.directions_walk_outlined,
   };
 
   @override
@@ -1258,6 +1277,42 @@ class _MeasurementPill extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Read-only distance readout for the quick-edit sheet. Distance is imported
+/// from Apple Health, so there's nothing to tap — just show the day's total.
+class _CompactDistance extends StatelessWidget {
+  final int? meters;
+
+  const _CompactDistance({required this.meters});
+
+  @override
+  Widget build(BuildContext context) {
+    final m = meters;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'DISTANCE',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textSecondary,
+            letterSpacing: 0.5,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          m == null ? 'No data from Apple Health' : '${metresToKm(m).toStringAsFixed(2)} km',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: AppColors.text,
+          ),
+        ),
+      ],
     );
   }
 }

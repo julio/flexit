@@ -92,6 +92,7 @@ class CloudSync {
       'flexit_bp_',
       'flexit_alc_',
       'flexit_weight_2',
+      'flexit_dist_',
     ];
     return !prefs
         .getKeys()

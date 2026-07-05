@@ -454,7 +454,7 @@ void main() {
 
     test('all measurements present and in swipe order', () async {
       expect(calendarMeasurements,
-          ['completion', 'p', 'drinks', 'backpain', 'weight']);
+          ['completion', 'p', 'drinks', 'backpain', 'weight', 'distance']);
     });
 
     test('rejects an unknown measurement via assertion', () async {
@@ -902,6 +902,50 @@ void main() {
       });
       final all = await getAllBackPainRatings();
       expect(all, {'2026-05-25': 3});
+    });
+  });
+
+  group('distance (metres)', () {
+    test('returns null when nothing stored', () async {
+      expect(await getDistanceMeters('2026-07-01'), isNull);
+    });
+
+    test('saves and retrieves whole metres', () async {
+      await setDistanceMeters('2026-07-01', 5230);
+      expect(await getDistanceMeters('2026-07-01'), 5230);
+    });
+
+    test('zero metres is rejected? no — non-negative is allowed', () async {
+      await setDistanceMeters('2026-07-01', 0);
+      expect(await getDistanceMeters('2026-07-01'), 0);
+    });
+
+    test('negative distance trips the assertion', () async {
+      expect(
+        () => setDistanceMeters('2026-07-01', -1),
+        throwsA(isA<AssertionError>()),
+      );
+    });
+
+    test('getAllDistanceMeters returns map keyed by date', () async {
+      await setDistanceMeters('2026-06-29', 3000);
+      await setDistanceMeters('2026-06-30', 7250);
+      final all = await getAllDistanceMeters();
+      expect(all, {'2026-06-29': 3000, '2026-06-30': 7250});
+    });
+
+    test('getAllDistanceMeters ignores unrelated keys', () async {
+      SharedPreferences.setMockInitialValues({
+        'flexit_dist_2026-06-30': 4200,
+        'flexit_weight_2026-06-30': 75000,
+        'flexit_bp_2026-06-30': 2,
+      });
+      expect(await getAllDistanceMeters(), {'2026-06-30': 4200});
+    });
+
+    test('metresToKm converts', () {
+      expect(metresToKm(5230), closeTo(5.23, 1e-9));
+      expect(metresToKm(0), 0);
     });
   });
 
