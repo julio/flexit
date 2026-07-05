@@ -116,7 +116,7 @@ class _TodayScreenState extends State<TodayScreen>
     final completed = await getTodayCompletedExercises();
     final pRating = await getPRating(today);
     final alcoholYesterday = await getAlcoholRating(yesterday);
-    final backPain = await getBackPainRating(today);
+    final backPain = await getBackPainRating(yesterday);
     final weightGrams = await getWeightGrams(today);
     final weightUnit = await getWeightUnit();
     final routineId = await getActiveRoutineId();
@@ -189,8 +189,8 @@ class _TodayScreenState extends State<TodayScreen>
   }
 
   Future<void> _setBackPain(int value) async {
-    final today = formatDate(DateTime.now());
-    await setBackPainRating(today, value);
+    if (_yesterdayKey.isEmpty) return;
+    await setBackPainRating(_yesterdayKey, value);
     bumpDataChanged();
     HapticFeedback.lightImpact();
     if (mounted) setState(() => _backPain = value);
@@ -419,7 +419,7 @@ class _TodayScreenState extends State<TodayScreen>
           //   2. weight (post-toilet morning weigh-in)
           //   3. p (mood right now)
           //   4. exercises (the workout itself, with progress + week banner)
-          //   5. back pain (logged after the session)
+          //   5. back pain yesterday (rated the morning after, like drinks)
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
@@ -504,7 +504,8 @@ class _TodayScreenState extends State<TodayScreen>
               ),
             ),
           ],
-          // Back pain after the workout — typically rated post-session.
+          // Back pain scoped to the previous day — logged the morning after,
+          // the same as drinks. Rating writes to [_yesterdayKey].
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
@@ -1629,7 +1630,7 @@ class _BackPainCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Lower back pain',
+                'Lower back pain yesterday',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,

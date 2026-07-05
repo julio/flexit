@@ -108,7 +108,7 @@ void main() {
       expect(find.text('Drinks yesterday'), findsOneWidget);
       expect(find.text('Weight'), findsOneWidget);
       expect(find.text('How was p today?'), findsOneWidget);
-      expect(find.text('Lower back pain'), findsOneWidget);
+      expect(find.text('Lower back pain yesterday'), findsOneWidget);
       // Workout section collapsed by default.
       expect(find.text("TODAY'S WORKOUT"), findsOneWidget);
     });
@@ -191,13 +191,14 @@ void main() {
   });
 
   group('back-pain card', () {
-    testWidgets('tapping a level button persists today back-pain rating',
+    testWidgets('tapping a level button persists yesterday back-pain rating',
         (tester) async {
       await setup(tester, prefs: {'flexit_routine': daily30RoutineId});
       await pumpScreen(tester, const TodayScreen(), settle: true);
 
-      final today = formatDate(DateTime.now());
-      expect(await getBackPainRating(today), isNull);
+      final yesterday =
+          formatDate(DateTime.now().subtract(const Duration(days: 1)));
+      expect(await getBackPainRating(yesterday), isNull);
 
       // The back-pain row has buttons labeled '0'..'10'. Tap '3'.
       await scrollAndTap(
@@ -209,7 +210,19 @@ void main() {
       // test. (Noted as a latent layout bug in the report.)
       drainBenignOverflow(tester);
 
-      expect(await getBackPainRating(today), 3);
+      expect(await getBackPainRating(yesterday), 3);
+      expect(find.text('3 · noticeable'), findsOneWidget);
+    });
+
+    testWidgets('pre-seeded yesterday rating renders on load', (tester) async {
+      final yesterday =
+          formatDate(DateTime.now().subtract(const Duration(days: 1)));
+      await setup(tester, prefs: {
+        'flexit_routine': daily30RoutineId,
+        'flexit_bp_$yesterday': 3,
+      });
+      await pumpScreen(tester, const TodayScreen(), settle: true);
+      drainBenignOverflow(tester);
       expect(find.text('3 · noticeable'), findsOneWidget);
     });
   });
